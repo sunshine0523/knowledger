@@ -22,7 +22,7 @@ context="<IMPORTANT_CODE_REVIEW_PREREQUISITE>
 Before conducting the code review, you MUST first invoke knowledger to retrieve relevant coding standards and best practices.
 
 Steps:
-1. First call the \`claude-code-knowledger:knowledger\` skill
+1. First call the \`knowledger:knowledger\` skill
 2. Use query keywords such as: \"coding standards\", \"code review checklist\", \"best practices\", etc.
 3. Conduct a comprehensive code review based on the retrieved knowledge
 

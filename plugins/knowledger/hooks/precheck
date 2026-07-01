@@ -17,7 +17,7 @@ escape_for_json() {
 }
 
 skill_escaped=$(escape_for_json "$skill_content")
-context="<EXTREMELY_IMPORTANT>\nYou have Knowledger, a knowledge base plugin.\n\nBefore answering, you MUST invoke the \`claude-code-knowledger:knowledger\` skill using the Skill tool.\n\n**Below is the full content of your 'claude-code-knowledger:knowledger' skill for reference:**\n\n${skill_escaped}\n</EXTREMELY_IMPORTANT>"
+context="<EXTREMELY_IMPORTANT>\nYou have Knowledger, a knowledge base plugin.\n\nBefore answering, you MUST invoke the \`knowledger:knowledger\` skill using the Skill tool.\n\n**Below is the full content of your 'knowledger:knowledger' skill for reference:**\n\n${skill_escaped}\n</EXTREMELY_IMPORTANT>"
 
 if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   printf '{\n  "additional_context": "%s"\n}\n' "$context" | cat

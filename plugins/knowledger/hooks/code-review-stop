@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Stop hook — when Claude finishes and the session touched files via
+# Edit/Write/MultiEdit/NotebookEdit, force a knowledger-driven code review
+# against the project's saved coding standards before letting the turn end.
+#
+# Loop prevention: relies on Claude Code's `stop_hook_active` field. When the
+# hook returns decision:block, Claude continues with the reason; when it
+# stops again, this hook receives stop_hook_active=true and exits cleanly.
+set -euo pipefail
+
+input=$(cat)
+
+parse() {
+    printf '%s' "$input" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    v = d.get('$1', '')
+    if isinstance(v, bool):
+        print('true' if v else 'false')
+    else:
+        print(v)
+except Exception:
+    print('')
+" 2>/dev/null
+}
+
+session_id=$(parse session_id)
+stop_hook_active=$(parse stop_hook_active)
+
+marker_dir="${TMPDIR:-/tmp}/knowledger-hooks"
+marker="${marker_dir}/edits-${session_id}.marker"
+
+# Recursion guard — this Stop invocation is a follow-up we ourselves caused.
+if [ "$stop_hook_active" = "true" ]; then
+    rm -f "$marker" 2>/dev/null || true
+    exit 0
+fi
+
+[ -z "$session_id" ] && exit 0
+[ ! -f "$marker" ] && exit 0
+
+project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+# Opt-out flag — users can drop this file to disable per-project CR.
+if [ -f "${project_dir}/.knowledger/skip-code-review" ]; then
+    rm -f "$marker" 2>/dev/null || true
+    exit 0
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+    rm -f "$marker" 2>/dev/null || true
+    exit 0
+fi
+
+cd "$project_dir" 2>/dev/null || exit 0
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    rm -f "$marker" 2>/dev/null || true
+    exit 0
+fi
+
+# Tracked + staged changes only. Untracked (??) and ignored (!!) are skipped
+# so we do not review generated files, node_modules, build artifacts, etc.
+changed=$(git status --porcelain 2>/dev/null | awk '$1 !~ /^\?/ && $1 !~ /^!/ {print $2}' | head -50)
+
+if [ -z "$changed" ]; then
+    rm -f "$marker" 2>/dev/null || true
+    exit 0
+fi
+
+file_list=$(printf '%s' "$changed" | sed 's/^/- /')
+
+# One review per edit cycle — consume the marker now.
+rm -f "$marker" 2>/dev/null || true
+
+REASON=$(cat <<EOF
+Code changes were detected in this session. Before finishing, run a knowledger-based code review against the project's saved conventions — this is NOT a general code review, only convention/standard compliance.
+
+Steps (in order):
+1. Invoke the \`knowledger:knowledger\` skill (or dispatch a KB-scan subagent) to search ALL configured knowledge bases for items whose tags/titles relate to coding standards, code review checklists, style rules, library usage, error handling, testing, security, or any convention that could apply to the changed files. Classify this as a "coding task" — over-include rather than under-include.
+2. Call \`get_knowledge_item\` on every candidate and pull the full content into context.
+3. Run \`git diff HEAD\` and \`git diff --cached\` to see the exact modifications.
+4. Review each hunk against the retrieved conventions. Report ONLY findings that trace back to a specific knowledge item — do not invent generic advice. For each finding include:
+   - path:line
+   - The knowledge item cited (KB id + item title)
+   - The problem
+   - A suggested fix
+5. If no relevant knowledge items exist for the changed code, say so explicitly and finish. If items exist but no violations, state "No convention violations found" and list which standards were checked.
+
+Changed files:
+$file_list
+EOF
+)
+
+REASON="$REASON" python3 -c "
+import json, os
+print(json.dumps({'decision': 'block', 'reason': os.environ['REASON']}))
+" 2>/dev/null || echo '{}'
+
+exit 0
