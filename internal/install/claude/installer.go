@@ -30,9 +30,13 @@ var bundleFiles = []string{
 	"skills/knowledger/SKILL.md",
 	"skills/git-knowledge/SKILL.md",
 	"skills/update-knowledger/SKILL.md",
+	"skills/kb-code-review/SKILL.md",
 	"hooks/hooks.json",
 	"hooks/precheck",
 	"hooks/git-sync",
+	"hooks/code-review-precheck",
+	"hooks/code-review-stop",
+	"hooks/edit-tracker",
 }
 
 type CommandRunner interface {

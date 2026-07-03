@@ -1,7 +1,7 @@
 ---
 name: update-knowledger
 description: Use when the user says "更新knowledger", "update knowledger", "升级knowledger", "刷新knowledger", or wants to update and reinstall the knowledger CLI and Claude Code plugin.
-version: 1.0.0
+version: 2.0.0
 triggers:
   - "更新knowledger"
   - "升级knowledger"
@@ -16,61 +16,43 @@ triggers:
 
 # Update Knowledger
 
-Updates the knowledger binary via the official install script and reinstalls the Claude Code plugin.
+Updates the knowledger binary and reinstalls the Claude Code plugin in one command.
 
 ## Workflow
 
-```dot
-digraph update_flow {
-  "User says 更新knowledger" [shape=doublecircle];
-  "Detect OS" [shape=diamond];
-  "curl install.sh (Linux/macOS)" [shape=box];
-  "irm install.ps1 (Windows)" [shape=box];
-  "knowledger install --claude" [shape=box];
-  "Verify: knowledger --version" [shape=box];
-  "Done" [shape=doublecircle];
-
-  "User says 更新knowledger" -> "Detect OS";
-  "Detect OS" -> "curl install.sh (Linux/macOS)" [label="Linux / macOS"];
-  "Detect OS" -> "irm install.ps1 (Windows)" [label="Windows"];
-  "curl install.sh (Linux/macOS)" -> "knowledger install --claude";
-  "irm install.ps1 (Windows)" -> "knowledger install --claude";
-  "knowledger install --claude" -> "Verify: knowledger --version";
-  "Verify: knowledger --version" -> "Done";
-}
+```
+knowledger update
+    ├── Fetches latest release from GitHub
+    ├── Downloads binary for current OS/arch
+    ├── Atomically replaces current binary
+    └── Reinstalls Claude Code plugin automatically
 ```
 
-### Step 1: Install/update binary via official script
-
-**macOS / Linux:**
+### Step 1: Run update
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sunshine0523/claude-knowledger/main/install.sh | sh
+knowledger update
 ```
 
-**Windows (PowerShell):**
+This single command handles everything: binary self-update + plugin reinstall.
 
-```powershell
-irm https://raw.githubusercontent.com/sunshine0523/claude-knowledger/main/install.ps1 | iex
-```
-
-The script auto-detects OS and architecture, downloads the latest release from GitHub, and installs to `/usr/local/bin` (or `~/.local/bin` if not writable).
-
-### Step 2: Reinstall Claude Code plugin
+### Step 2: Verify
 
 ```bash
-knowledger install --claude
+knowledger version
 ```
 
-### Step 3: Verify
+Report the version and confirm the update succeeded.
 
-```bash
-knowledger --version
-```
+## Flags
 
-Report the version and confirm plugin is active.
+| Flag | Description |
+|------|-------------|
+| `--check` | Check for updates without installing |
+| `--skip-plugin` | Skip Claude Code plugin reinstall after binary update |
 
 ## Error Handling
 
-- If `curl`/`irm` fails → check network connectivity, verify GitHub is reachable
-- If `knowledger install --claude` fails → report, suggest `claude plugin validate ./plugins/knowledger`
+- If GitHub is unreachable → check network connectivity
+- If binary lacks write permission → run with `sudo knowledger update`
+- If plugin reinstall fails after binary update → run `knowledger install --claude` manually

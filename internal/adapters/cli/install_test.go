@@ -99,13 +99,13 @@ func TestInstallWithoutTargetFails(t *testing.T) {
 }
 
 func TestInstallClaudeRejectsExtraArgs(t *testing.T) {
-	cmd := NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", func() error { return nil }, func(out, errOut io.Writer) error {
+	cmd := NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", "dev", func() error { return nil }, func(out, errOut io.Writer) error {
 		t.Fatalf("runner should not be called")
 		return nil
 	}, func(out, errOut io.Writer) error {
 		t.Fatalf("runner should not be called")
 		return nil
-	})
+	}, nil)
 	cmd.SetArgs([]string{"install", "--claude", "extra"})
 
 	err := cmd.Execute()

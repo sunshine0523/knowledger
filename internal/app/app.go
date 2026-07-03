@@ -18,7 +18,14 @@ import (
 	"github.com/kindbrave/claude-knowledger/internal/projectroot"
 	"github.com/kindbrave/claude-knowledger/internal/registry"
 	"github.com/kindbrave/claude-knowledger/internal/service"
+	"github.com/kindbrave/claude-knowledger/internal/spec"
+	kbprovider "github.com/kindbrave/claude-knowledger/internal/spec/kb"
+	extprovider "github.com/kindbrave/claude-knowledger/internal/spec/external"
+	scriptprovider "github.com/kindbrave/claude-knowledger/internal/spec/script"
 )
+
+// Version is set at build time via -ldflags "-X github.com/kindbrave/claude-knowledger/internal/app.Version=..."
+var Version = "dev"
 
 type MCPRunner func(*service.Service) error
 
@@ -56,7 +63,7 @@ func SetOpenCodeInstallRunnerForTest(runner OpenCodeInstallRunner) func() {
 }
 
 func Run(configPath string, args []string) error {
-	if isInstallCommand(args) {
+	if isNoConfigCommand(args) {
 		return runService(nil, config.DefaultServerAddress, args)
 	}
 	cfg, err := config.Load(configPath)
@@ -68,7 +75,7 @@ func Run(configPath string, args []string) error {
 }
 
 func RunDefault(args []string) error {
-	if isInstallCommand(args) {
+	if isNoConfigCommand(args) {
 		return runService(nil, config.DefaultServerAddress, args)
 	}
 	cfg, err := config.Default()
@@ -80,7 +87,7 @@ func RunDefault(args []string) error {
 }
 
 func RunWithConfig(cfg config.Config, projectRoot string, args []string) error {
-	if isInstallCommand(args) {
+	if isNoConfigCommand(args) {
 		return runService(nil, config.DefaultServerAddress, args)
 	}
 	if err := config.ApplyDefaults(&cfg); err != nil {
@@ -120,7 +127,41 @@ func BuildServiceFromConfig(cfg config.Config, projectRoot string) (*service.Ser
 		projectStore = registry.NewFileStore(filepath.Join(projectRoot, projectroot.MarkerDirName, "registry.json"))
 	}
 	r := registry.New(cfg.KnowledgeBases, globalStore, projectStore, projectRoot)
-	return service.NewManaged(r, buildBackends)
+	svc, err := service.NewManaged(r, buildBackends)
+	if err != nil {
+		return nil, err
+	}
+	scope := core.ScopeGlobal
+	if projectRoot != "" {
+		scope = core.ScopeProject
+	}
+	svc.SetSpecEngineBuilder(func(specs []config.SpecificationConfig) service.SpecEngine {
+		return buildSpecEngine(specs, svc, scope)
+	})
+	if len(cfg.Specifications) > 0 {
+		engine := buildSpecEngine(cfg.Specifications, svc, scope)
+		svc.SetSpecEngine(engine)
+		svc.SetSpecs(cfg.Specifications)
+	}
+	return svc, nil
+}
+
+func buildSpecEngine(specs []config.SpecificationConfig, svc *service.Service, scope string) *spec.Engine {
+	engine := spec.NewEngine(specs)
+	for _, s := range specs {
+		if !s.Enabled {
+			continue
+		}
+		switch s.Type {
+		case "kb":
+			engine.RegisterProvider(s.ID, kbprovider.New(svc, s.Source, scope))
+		case "external":
+			engine.RegisterProvider(s.ID, extprovider.New(s.Source))
+		case "script":
+			engine.RegisterProvider(s.ID, scriptprovider.New(s.Source))
+		}
+	}
+	return engine
 }
 
 func buildBackends(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) {
@@ -141,19 +182,22 @@ func buildBackends(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, erro
 }
 
 func runService(svc *service.Service, address string, args []string) error {
-	cmd := cli.NewRootCommandWithAddressAndRunners(svc, address, func() error {
-		return runMCPServer(svc)
-	}, func(out, errOut io.Writer) error {
+	claudeInstall := func(out, errOut io.Writer) error {
 		return runClaudeInstall(out, errOut)
-	}, func(out, errOut io.Writer) error {
+	}
+	cmd := cli.NewRootCommandWithAddressAndRunners(svc, address, Version, func() error {
+		return runMCPServer(svc)
+	}, claudeInstall, func(out, errOut io.Writer) error {
 		return runOpenCodeInstall(out, errOut)
+	}, func(version string, install cli.ClaudeInstallRunner, out, errOut io.Writer) error {
+		return cli.DefaultUpdateRunner(version, install, out, errOut)
 	})
 	cmd.SetArgs(args)
 	return cmd.Execute()
 }
 
-func isInstallCommand(args []string) bool {
-	return len(args) > 0 && args[0] == "install"
+func isNoConfigCommand(args []string) bool {
+	return len(args) > 0 && (args[0] == "install" || args[0] == "update" || args[0] == "version")
 }
 
 func hasStoreType(kbs []core.KnowledgeBase, storeType string) bool {

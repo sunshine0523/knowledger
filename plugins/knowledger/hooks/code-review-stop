@@ -69,33 +69,37 @@ if [ -z "$changed" ]; then
     exit 0
 fi
 
-file_list=$(printf '%s' "$changed" | sed 's/^/- /')
-
 # One review per edit cycle — consume the marker now.
 rm -f "$marker" 2>/dev/null || true
 
-REASON=$(cat <<EOF
-Code changes were detected in this session. Before finishing, run a knowledger-based code review against the project's saved conventions — this is NOT a general code review, only convention/standard compliance.
+# Build changed_files args for knowledger lint
+changed_files_args=""
+while IFS= read -r f; do
+    changed_files_args="$changed_files_args --changed-files $f"
+done <<< "$changed"
 
-Steps (in order):
-1. Invoke the \`knowledger:knowledger\` skill (or dispatch a KB-scan subagent) to search ALL configured knowledge bases for items whose tags/titles relate to coding standards, code review checklists, style rules, library usage, error handling, testing, security, or any convention that could apply to the changed files. Classify this as a "coding task" — over-include rather than under-include.
-2. Call \`get_knowledge_item\` on every candidate and pull the full content into context.
-3. Run \`git diff HEAD\` and \`git diff --cached\` to see the exact modifications.
-4. Review each hunk against the retrieved conventions. Report ONLY findings that trace back to a specific knowledge item — do not invent generic advice. For each finding include:
-   - path:line
-   - The knowledge item cited (KB id + item title)
-   - The problem
-   - A suggested fix
-5. If no relevant knowledge items exist for the changed code, say so explicitly and finish. If items exist but no violations, state "No convention violations found" and list which standards were checked.
+lint_result=""
+if command -v knowledger >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    lint_result=$(knowledger lint $changed_files_args 2>/dev/null || true)
+fi
 
-Changed files:
-$file_list
-EOF
-)
+if [ -z "$lint_result" ] || [ "$lint_result" = '{"findings":null,"rule_sets":null}' ] || [ "$lint_result" = '{"findings":[],"rule_sets":[]}' ]; then
+    exit 0
+fi
 
-REASON="$REASON" python3 -c "
+LINT_RESULT="$lint_result" python3 -c "
 import json, os
-print(json.dumps({'decision': 'block', 'reason': os.environ['REASON']}))
+result = os.environ.get('LINT_RESULT', '{}')
+reason = '''Lint checks completed. Apply the minimal fixes required by the findings below, citing each spec_id.
+
+- findings: apply fixes for must-fix and should-fix items.
+- rule_sets: compare the diff against these rules and fix any violations.
+- If both are empty, report \"no violations\" and finish.
+
+LintResult:
+''' + result
+print(json.dumps({'decision': 'block', 'reason': reason}))
 " 2>/dev/null || echo '{}'
 
 exit 0

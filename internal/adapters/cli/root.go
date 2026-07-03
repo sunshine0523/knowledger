@@ -17,12 +17,14 @@ func NewRootCommandWithAddress(svc *service.Service, address string) *cobra.Comm
 }
 
 func NewRootCommandWithAddressAndMCPRunner(svc *service.Service, address string, runMCP MCPRunner) *cobra.Command {
-	return NewRootCommandWithAddressAndRunners(svc, address, runMCP, func(out, errOut io.Writer) error { return nil }, func(out, errOut io.Writer) error { return nil })
+	return NewRootCommandWithAddressAndRunners(svc, address, "dev", runMCP, func(out, errOut io.Writer) error { return nil }, func(out, errOut io.Writer) error { return nil }, nil)
 }
 
-func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, runMCP MCPRunner, runClaudeInstall ClaudeInstallRunner, runOpenCodeInstall OpenCodeInstallRunner) *cobra.Command {
+func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, version string, runMCP MCPRunner, runClaudeInstall ClaudeInstallRunner, runOpenCodeInstall OpenCodeInstallRunner, runUpdate UpdateRunner) *cobra.Command {
 	cmd := &cobra.Command{Use: "knowledger"}
 	cmd.PersistentFlags().StringVar(&scopeFlag, "scope", "", "knowledge base scope: project, global. Defaults to project when running in a project directory, else global.")
+	cmd.AddCommand(newVersionCommand(version))
+	cmd.AddCommand(newUpdateCommand(version, runClaudeInstall, runUpdate))
 	cmd.AddCommand(newSearchCommand(svc))
 	cmd.AddCommand(newGetCommand(svc))
 	cmd.AddCommand(newListItemsCommand(svc))
@@ -38,5 +40,7 @@ func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, r
 	cmd.AddCommand(newKBGitKnowledgeAddCommand(svc))
 	cmd.AddCommand(newKBGitKnowledgePullCommand(svc))
 	cmd.AddCommand(newKBGitKnowledgeListCommand(svc))
+	cmd.AddCommand(newLintCommand(svc))
+	cmd.AddCommand(newSpecCommand(svc))
 	return cmd
 }

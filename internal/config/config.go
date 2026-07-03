@@ -29,6 +29,28 @@ type Config struct {
 	RuntimeRegistryPath string                `yaml:"runtime_registry_path"`
 	Server              ServerConfig          `yaml:"server"`
 	KnowledgeBases      []KnowledgeBaseConfig `yaml:"knowledge_bases"`
+	Specifications      []SpecificationConfig `yaml:"specifications"`
+}
+
+type SpecificationConfig struct {
+	ID      string       `yaml:"id"`
+	Name    string       `yaml:"name"`
+	Type    string       `yaml:"type"`    // kb | external | script
+	Enabled bool         `yaml:"enabled"`
+	Source  SourceConfig `yaml:"source"`
+}
+
+type SourceConfig struct {
+	// kb type
+	KBID string   `yaml:"kb_id,omitempty"`
+	Tags []string `yaml:"tags,omitempty"`
+	// external type
+	Command    string `yaml:"command,omitempty"`
+	Parser     string `yaml:"parser,omitempty"` // golangci-lint | checkstyle | eslint | generic-json
+	WorkingDir string `yaml:"working_dir,omitempty"`
+	// script type
+	Script       string `yaml:"script,omitempty"`
+	OutputFormat string `yaml:"output_format,omitempty"` // json | text
 }
 
 type ServerConfig struct {

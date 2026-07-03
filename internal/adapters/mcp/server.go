@@ -312,6 +312,7 @@ func (s *Server) registerTools() {
 	s.server.AddTool(gitKnowledgeAddTool, s.handleGitKnowledgeAdd)
 	s.server.AddTool(gitKnowledgePullTool, s.handleGitKnowledgePull)
 	s.server.AddTool(gitKnowledgeListTool, s.handleGitKnowledgeList)
+	s.registerSpecTools()
 }
 
 func (s *Server) handleGetKnowledgeItem(ctx context.Context, request mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {

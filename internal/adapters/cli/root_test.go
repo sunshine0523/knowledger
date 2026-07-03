@@ -44,13 +44,13 @@ func TestSearchCommandShowsSearchModeFlag(t *testing.T) {
 
 func TestRootInstallClaudeCallsInjectedRunnerOnce(t *testing.T) {
 	called := 0
-	cmd := cli.NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", func() error { return nil }, func(out, errOut io.Writer) error {
+	cmd := cli.NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", "dev", func() error { return nil }, func(out, errOut io.Writer) error {
 		called++
 		return nil
 	}, func(out, errOut io.Writer) error {
 		t.Fatalf("opencode runner should not be called")
 		return nil
-	})
+	}, nil)
 	cmd.SetArgs([]string{"install", "--claude"})
 
 	if err := cmd.Execute(); err != nil {
@@ -63,13 +63,13 @@ func TestRootInstallClaudeCallsInjectedRunnerOnce(t *testing.T) {
 
 func TestRootInstallOpenCodeCallsInjectedRunnerOnce(t *testing.T) {
 	called := 0
-	cmd := cli.NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", func() error { return nil }, func(out, errOut io.Writer) error {
+	cmd := cli.NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", "dev", func() error { return nil }, func(out, errOut io.Writer) error {
 		t.Fatalf("claude runner should not be called")
 		return nil
 	}, func(out, errOut io.Writer) error {
 		called++
 		return nil
-	})
+	}, nil)
 	cmd.SetArgs([]string{"install", "--opencode"})
 
 	if err := cmd.Execute(); err != nil {

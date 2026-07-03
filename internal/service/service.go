@@ -16,6 +16,16 @@ import (
 	"github.com/kindbrave/claude-knowledger/internal/registry"
 )
 
+// SpecEngine is satisfied by spec.Engine; kept as an interface to avoid an
+// import cycle between service and the spec sub-packages.
+type SpecEngine interface {
+	Run(ctx context.Context, changedFiles []string, specIDs []string) core.LintResult
+}
+
+// SpecEngineBuilder rebuilds the spec engine from a spec list. Set via
+// SetSpecEngineBuilder so the service can rebuild the engine after add/delete.
+type SpecEngineBuilder func(specs []config.SpecificationConfig) SpecEngine
+
 type SearchResult struct {
 	Hits     []core.SearchHit
 	Warnings []string
@@ -59,13 +69,16 @@ type CreateKnowledgeBaseInput struct {
 }
 
 type Service struct {
-	mu             sync.RWMutex
-	knowledgeBases []core.KnowledgeBase
-	backends       map[string]core.StoreBackend
-	registry       *registry.Registry
-	buildBackends  BackendBuilder
-	refreshMu      sync.Mutex
-	lastSignature  string
+	mu                 sync.RWMutex
+	knowledgeBases     []core.KnowledgeBase
+	backends           map[string]core.StoreBackend
+	registry           *registry.Registry
+	buildBackends      BackendBuilder
+	refreshMu          sync.Mutex
+	lastSignature      string
+	specEngine         SpecEngine
+	specs              []config.SpecificationConfig
+	specEngineBuilder  SpecEngineBuilder
 }
 
 var knowledgeBaseIDPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
@@ -427,6 +440,70 @@ func (s *Service) refreshIfChangedSilently() {
 func (s *Service) Close() error {
 	_, backends := s.snapshot()
 	return closeBackends(backends)
+}
+
+func (s *Service) SetSpecEngine(e SpecEngine) {
+	s.mu.Lock()
+	s.specEngine = e
+	s.mu.Unlock()
+}
+
+func (s *Service) SetSpecs(specs []config.SpecificationConfig) {
+	s.mu.Lock()
+	s.specs = append([]config.SpecificationConfig(nil), specs...)
+	s.mu.Unlock()
+}
+
+func (s *Service) SetSpecEngineBuilder(b SpecEngineBuilder) {
+	s.mu.Lock()
+	s.specEngineBuilder = b
+	s.mu.Unlock()
+}
+
+func (s *Service) AddSpecification(spec config.SpecificationConfig) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, existing := range s.specs {
+		if existing.ID == spec.ID {
+			return fmt.Errorf("specification %q already exists", spec.ID)
+		}
+	}
+	s.specs = append(s.specs, spec)
+	if s.specEngineBuilder != nil {
+		s.specEngine = s.specEngineBuilder(s.specs)
+	}
+	return nil
+}
+
+func (s *Service) DeleteSpecification(specID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, existing := range s.specs {
+		if existing.ID == specID {
+			s.specs = append(s.specs[:i], s.specs[i+1:]...)
+			if s.specEngineBuilder != nil {
+				s.specEngine = s.specEngineBuilder(s.specs)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("specification %q not found", specID)
+}
+
+func (s *Service) ListSpecifications() []config.SpecificationConfig {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return append([]config.SpecificationConfig(nil), s.specs...)
+}
+
+func (s *Service) RunLint(ctx context.Context, changedFiles, specIDs []string) core.LintResult {
+	s.mu.RLock()
+	engine := s.specEngine
+	s.mu.RUnlock()
+	if engine == nil {
+		return core.LintResult{}
+	}
+	return engine.Run(ctx, changedFiles, specIDs)
 }
 
 func closeBackends(backends map[string]core.StoreBackend) error {
