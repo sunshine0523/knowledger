@@ -14,6 +14,7 @@ const (
 	DefaultServerAddress       = ":34125"
 	DefaultStoragePath         = "~/.knowledger/db"
 	DefaultRuntimeRegistryPath = "~/.knowledger/registry.json"
+	DefaultSpecRegistryPath    = "~/.knowledger/specs.json"
 	DefaultKBID                = "default"
 	DefaultKBName              = "Default"
 	DefaultChromaProvider      = "chroma"
@@ -27,30 +28,31 @@ const (
 type Config struct {
 	DefaultSearchMode   string                `yaml:"default_search_mode"`
 	RuntimeRegistryPath string                `yaml:"runtime_registry_path"`
+	SpecRegistryPath    string                `yaml:"spec_registry_path"`
 	Server              ServerConfig          `yaml:"server"`
 	KnowledgeBases      []KnowledgeBaseConfig `yaml:"knowledge_bases"`
 	Specifications      []SpecificationConfig `yaml:"specifications"`
 }
 
 type SpecificationConfig struct {
-	ID      string       `yaml:"id"`
-	Name    string       `yaml:"name"`
-	Type    string       `yaml:"type"`    // kb | external | script
-	Enabled bool         `yaml:"enabled"`
-	Source  SourceConfig `yaml:"source"`
+	ID      string       `yaml:"id" json:"id"`
+	Name    string       `yaml:"name" json:"name,omitempty"`
+	Type    string       `yaml:"type" json:"type"`
+	Enabled bool         `yaml:"enabled" json:"enabled"`
+	Source  SourceConfig `yaml:"source" json:"source"`
 }
 
 type SourceConfig struct {
 	// kb type
-	KBID string   `yaml:"kb_id,omitempty"`
-	Tags []string `yaml:"tags,omitempty"`
+	KBID string   `yaml:"kb_id,omitempty" json:"kb_id,omitempty"`
+	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 	// external type
-	Command    string `yaml:"command,omitempty"`
-	Parser     string `yaml:"parser,omitempty"` // golangci-lint | checkstyle | eslint | generic-json
-	WorkingDir string `yaml:"working_dir,omitempty"`
+	Command    string `yaml:"command,omitempty" json:"command,omitempty"`
+	Parser     string `yaml:"parser,omitempty" json:"parser,omitempty"` // golangci-lint | checkstyle | eslint | generic-json
+	WorkingDir string `yaml:"working_dir,omitempty" json:"working_dir,omitempty"`
 	// script type
-	Script       string `yaml:"script,omitempty"`
-	OutputFormat string `yaml:"output_format,omitempty"` // json | text
+	Script       string `yaml:"script,omitempty" json:"script,omitempty"`
+	OutputFormat string `yaml:"output_format,omitempty" json:"output_format,omitempty"` // json | text
 }
 
 type ServerConfig struct {
@@ -110,6 +112,14 @@ func ApplyDefaults(cfg *Config) error {
 		return err
 	}
 	cfg.RuntimeRegistryPath = runtimeRegistryPath
+	if cfg.SpecRegistryPath == "" {
+		cfg.SpecRegistryPath = DefaultSpecRegistryPath
+	}
+	specRegistryPath, err := expandHomePath(cfg.SpecRegistryPath)
+	if err != nil {
+		return err
+	}
+	cfg.SpecRegistryPath = specRegistryPath
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = DefaultServerAddress
 	}

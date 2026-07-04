@@ -40,6 +40,9 @@ func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, v
 	cmd.AddCommand(newKBGitKnowledgeAddCommand(svc))
 	cmd.AddCommand(newKBGitKnowledgePullCommand(svc))
 	cmd.AddCommand(newKBGitKnowledgeListCommand(svc))
+	cmd.AddCommand(newSpecGitAddCommand(svc))
+	cmd.AddCommand(newSpecGitPullCommand(svc))
+	cmd.AddCommand(newSpecGitListCommand(svc))
 	cmd.AddCommand(newLintCommand(svc))
 	cmd.AddCommand(newSpecCommand(svc))
 	return cmd

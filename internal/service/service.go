@@ -14,6 +14,7 @@ import (
 	"github.com/kindbrave/claude-knowledger/internal/config"
 	"github.com/kindbrave/claude-knowledger/internal/core"
 	"github.com/kindbrave/claude-knowledger/internal/registry"
+	"github.com/kindbrave/claude-knowledger/internal/specregistry"
 )
 
 // SpecEngine is satisfied by spec.Engine; kept as an interface to avoid an
@@ -69,16 +70,17 @@ type CreateKnowledgeBaseInput struct {
 }
 
 type Service struct {
-	mu                 sync.RWMutex
-	knowledgeBases     []core.KnowledgeBase
-	backends           map[string]core.StoreBackend
-	registry           *registry.Registry
-	buildBackends      BackendBuilder
-	refreshMu          sync.Mutex
-	lastSignature      string
-	specEngine         SpecEngine
-	specs              []config.SpecificationConfig
-	specEngineBuilder  SpecEngineBuilder
+	mu                sync.RWMutex
+	knowledgeBases    []core.KnowledgeBase
+	backends          map[string]core.StoreBackend
+	registry          *registry.Registry
+	specRegistry      *specregistry.Registry
+	buildBackends     BackendBuilder
+	refreshMu         sync.Mutex
+	lastSignature     string
+	specEngine        SpecEngine
+	specs             []config.SpecificationConfig
+	specEngineBuilder SpecEngineBuilder
 }
 
 var knowledgeBaseIDPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
@@ -460,7 +462,28 @@ func (s *Service) SetSpecEngineBuilder(b SpecEngineBuilder) {
 	s.mu.Unlock()
 }
 
-func (s *Service) AddSpecification(spec config.SpecificationConfig) error {
+// SetSpecRegistry installs the persistent spec registry. When set,
+// AddSpecification / DeleteSpecification route through it and the
+// in-memory spec list is refreshed from the merged view on every
+// mutation. Callers must also seed the initial in-memory list via
+// SetSpecs after this is wired.
+func (s *Service) SetSpecRegistry(reg *specregistry.Registry) {
+	s.mu.Lock()
+	s.specRegistry = reg
+	s.mu.Unlock()
+}
+
+func (s *Service) AddSpecification(scope string, spec config.SpecificationConfig) error {
+	if s.specRegistry != nil {
+		normalized, err := core.NormalizeScope(scope)
+		if err != nil {
+			return err
+		}
+		if err := s.specRegistry.Create(normalized, spec); err != nil {
+			return err
+		}
+		return s.reloadSpecs()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, existing := range s.specs {
@@ -475,7 +498,17 @@ func (s *Service) AddSpecification(spec config.SpecificationConfig) error {
 	return nil
 }
 
-func (s *Service) DeleteSpecification(specID string) error {
+func (s *Service) DeleteSpecification(scope, specID string) error {
+	if s.specRegistry != nil {
+		normalized, err := core.NormalizeScope(scope)
+		if err != nil {
+			return err
+		}
+		if err := s.specRegistry.Delete(normalized, specID); err != nil {
+			return err
+		}
+		return s.reloadSpecs()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, existing := range s.specs {
@@ -491,9 +524,43 @@ func (s *Service) DeleteSpecification(specID string) error {
 }
 
 func (s *Service) ListSpecifications() []config.SpecificationConfig {
+	if s.specRegistry != nil {
+		if merged, err := s.specRegistry.List(); err == nil {
+			s.mu.Lock()
+			s.specs = append([]config.SpecificationConfig(nil), merged...)
+			s.mu.Unlock()
+			return merged
+		}
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return append([]config.SpecificationConfig(nil), s.specs...)
+}
+
+// ListSpecificationRecords returns the source-aware view (scope + static
+// vs runtime). Only available when the spec registry is wired.
+func (s *Service) ListSpecificationRecords() ([]specregistry.SpecificationRecord, error) {
+	if s.specRegistry == nil {
+		return nil, fmt.Errorf("spec registry is not available")
+	}
+	return s.specRegistry.ListWithSources()
+}
+
+// reloadSpecs re-reads the merged view from specRegistry and rebuilds
+// the spec engine. Called after every mutation that persists through
+// specRegistry.
+func (s *Service) reloadSpecs() error {
+	merged, err := s.specRegistry.List()
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.specs = append([]config.SpecificationConfig(nil), merged...)
+	if s.specEngineBuilder != nil {
+		s.specEngine = s.specEngineBuilder(s.specs)
+	}
+	s.mu.Unlock()
+	return nil
 }
 
 func (s *Service) RunLint(ctx context.Context, changedFiles, specIDs []string) core.LintResult {

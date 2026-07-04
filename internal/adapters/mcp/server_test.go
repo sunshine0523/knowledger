@@ -55,7 +55,7 @@ func (b *indexToolBackend) MaintainIndex(_ context.Context, _ core.KnowledgeBase
 func TestNewServerRegistersKnowledgeToolsInOrder(t *testing.T) {
 	server := mcpadapter.NewServer(nil)
 	tools := server.Tools()
-	want := []string{"get_knowledge_item", "list_knowledge_items", "add_knowledge_item", "delete_knowledge_item", "list_knowledge_bases", "create_knowledge_base", "delete_knowledge_base", "index_knowledge", "git_knowledge_add", "git_knowledge_pull", "git_knowledge_list", "list_specifications", "run_lint"}
+	want := []string{"get_knowledge_item", "list_knowledge_items", "add_knowledge_item", "delete_knowledge_item", "list_knowledge_bases", "create_knowledge_base", "delete_knowledge_base", "index_knowledge", "git_knowledge_add", "git_knowledge_pull", "git_knowledge_list", "spec_git_add", "spec_git_pull", "spec_git_list", "list_specifications", "run_lint"}
 	if len(tools) != len(want) {
 		t.Fatalf("expected %d tools, got %d", len(want), len(tools))
 	}

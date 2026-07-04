@@ -8,30 +8,35 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/kindbrave/claude-knowledger/internal/config"
 	"github.com/kindbrave/claude-knowledger/internal/core"
 	"github.com/kindbrave/claude-knowledger/internal/service"
 	"github.com/spf13/cobra"
 )
 
-func newKBGitKnowledgeAddCommand(svc *service.Service) *cobra.Command {
+func newSpecGitAddCommand(svc *service.Service) *cobra.Command {
 	var id, name string
+	var tags []string
 	cmd := &cobra.Command{
-		Use:   "kb-git-knowledge-add <url>",
-		Short: "Clone a git repository as a text knowledge base",
+		Use:   "spec-git-add <url>",
+		Short: "Clone a git repository as a kb-type specification (rule set)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if svc == nil {
+				return fmt.Errorf("service is not configured")
+			}
 			url := args[0]
 			if id == "" {
-				id = gitIDFromURL(url, "git-knowledge")
+				id = gitIDFromURL(url, "git-spec")
 			}
 			if name == "" {
 				name = id
 			}
-			scope, err := EffectiveScope(ScopeFlagValue(), svc != nil && svc.HasProjectScope())
+			scope, err := EffectiveScope(ScopeFlagValue(), svc.HasProjectScope())
 			if err != nil {
 				return err
 			}
-			clonePath, err := gitKnowledgePath(svc, scope, id)
+			clonePath, err := gitSpecPath(svc, scope, id)
 			if err != nil {
 				return err
 			}
@@ -53,23 +58,43 @@ func newKBGitKnowledgeAddCommand(svc *service.Service) *cobra.Command {
 				Path:      clonePath,
 			})
 			if err != nil {
+				_ = os.RemoveAll(clonePath)
 				return err
 			}
-			return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"knowledge_base": record})
+			spec := config.SpecificationConfig{
+				ID:      id,
+				Name:    name,
+				Type:    "kb",
+				Enabled: true,
+				Source:  config.SourceConfig{KBID: id, Tags: tags},
+			}
+			if err := svc.AddSpecification(scope, spec); err != nil {
+				_ = svc.DeleteKnowledgeBase(context.Background(), scope, id)
+				_ = os.RemoveAll(clonePath)
+				return err
+			}
+			return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
+				"knowledge_base": record,
+				"spec":           spec,
+			})
 		},
 	}
-	cmd.Flags().StringVar(&id, "id", "", "knowledge base id (derived from repository name if omitted)")
+	cmd.Flags().StringVar(&id, "id", "", "specification id (derived from repository name if omitted)")
 	cmd.Flags().StringVar(&name, "name", "", "human-readable name (defaults to id)")
+	cmd.Flags().StringArrayVar(&tags, "tag", nil, "spec tag filter (repeatable, restricts which KB items participate)")
 	return cmd
 }
 
-func newKBGitKnowledgePullCommand(svc *service.Service) *cobra.Command {
+func newSpecGitPullCommand(svc *service.Service) *cobra.Command {
 	var id string
 	cmd := &cobra.Command{
-		Use:   "kb-git-knowledge-pull",
-		Short: "Pull latest changes for a git-knowledge knowledge base",
+		Use:   "spec-git-pull",
+		Short: "Pull latest changes for a spec-git specification",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scope, err := EffectiveScope(ScopeFlagValue(), svc != nil && svc.HasProjectScope())
+			if svc == nil {
+				return fmt.Errorf("service is not configured")
+			}
+			scope, err := EffectiveScope(ScopeFlagValue(), svc.HasProjectScope())
 			if err != nil {
 				return err
 			}
@@ -81,7 +106,7 @@ func newKBGitKnowledgePullCommand(svc *service.Service) *cobra.Command {
 				}
 			}
 			if kbPath == "" {
-				return fmt.Errorf("knowledge base %q (scope: %s) not found or has no path", id, scope)
+				return fmt.Errorf("spec %q (scope: %s) not found or has no path", id, scope)
 			}
 			out, err := exec.CommandContext(cmd.Context(), "git", "-C", kbPath, "pull").CombinedOutput()
 			fmt.Fprint(cmd.OutOrStdout(), string(out))
@@ -91,39 +116,21 @@ func newKBGitKnowledgePullCommand(svc *service.Service) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&id, "id", "", "knowledge base id")
+	cmd.Flags().StringVar(&id, "id", "", "specification id")
 	_ = cmd.MarkFlagRequired("id")
 	return cmd
 }
 
-func gitKnowledgePath(svc *service.Service, scope, id string) (string, error) {
-	if scope == core.ScopeProject {
-		root := svc.ProjectRoot()
-		if root == "" {
-			return "", fmt.Errorf("not in a project directory")
-		}
-		return filepath.Join(root, ".knowledger", "git-knowledge", id), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".knowledger", "git-knowledge", id), nil
-}
-
-func newKBGitKnowledgeListCommand(svc *service.Service) *cobra.Command {
+func newSpecGitListCommand(svc *service.Service) *cobra.Command {
 	return &cobra.Command{
-		Use:   "kb-git-knowledge-list",
-		Short: "List all git-knowledge knowledge bases (global and project)",
+		Use:   "spec-git-list",
+		Short: "List all spec-git specifications (global and project)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			type entry struct {
 				Scope string `json:"scope"`
 				ID    string `json:"id"`
 				Path  string `json:"path"`
 			}
-			// Build a set of registered git-knowledge paths so orphaned
-			// directories (whose KB record was already deleted) are not
-			// surfaced.
 			registered := make(map[string]struct{})
 			if svc != nil {
 				for _, kb := range svc.ListKnowledgeBases() {
@@ -135,14 +142,14 @@ func newKBGitKnowledgeListCommand(svc *service.Service) *cobra.Command {
 						continue
 					}
 					clean := filepath.Clean(path)
-					if filepath.Base(filepath.Dir(clean)) == "git-knowledge" {
+					if filepath.Base(filepath.Dir(clean)) == "git-spec" {
 						registered[clean] = struct{}{}
 					}
 				}
 			}
 			var results []entry
 			if home, err := os.UserHomeDir(); err == nil {
-				dir := filepath.Join(home, ".knowledger", "git-knowledge")
+				dir := filepath.Join(home, ".knowledger", "git-spec")
 				if entries, err := os.ReadDir(dir); err == nil {
 					for _, e := range entries {
 						if !e.IsDir() {
@@ -156,7 +163,7 @@ func newKBGitKnowledgeListCommand(svc *service.Service) *cobra.Command {
 				}
 			}
 			if svc != nil && svc.HasProjectScope() {
-				dir := filepath.Join(svc.ProjectRoot(), ".knowledger", "git-knowledge")
+				dir := filepath.Join(svc.ProjectRoot(), ".knowledger", "git-spec")
 				if entries, err := os.ReadDir(dir); err == nil {
 					for _, e := range entries {
 						if !e.IsDir() {
@@ -177,3 +184,17 @@ func newKBGitKnowledgeListCommand(svc *service.Service) *cobra.Command {
 	}
 }
 
+func gitSpecPath(svc *service.Service, scope, id string) (string, error) {
+	if scope == core.ScopeProject {
+		root := svc.ProjectRoot()
+		if root == "" {
+			return "", fmt.Errorf("not in a project directory")
+		}
+		return filepath.Join(root, ".knowledger", "git-spec", id), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".knowledger", "git-spec", id), nil
+}

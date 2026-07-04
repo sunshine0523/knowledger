@@ -18,6 +18,7 @@ type runLintInput struct {
 }
 
 type addSpecificationInput struct {
+	Scope        string   `json:"scope,omitempty"`
 	ID           string   `json:"id"`
 	Name         string   `json:"name,omitempty"`
 	Type         string   `json:"type"`
@@ -32,7 +33,8 @@ type addSpecificationInput struct {
 }
 
 type deleteSpecificationInput struct {
-	ID string `json:"id"`
+	Scope string `json:"scope,omitempty"`
+	ID    string `json:"id"`
 }
 
 type addRuleToSpecInput struct {
@@ -64,7 +66,8 @@ func (s *Server) registerSpecTools() {
 	)
 	addSpecTool := mcpgo.NewTool(
 		"add_specification",
-		mcpgo.WithDescription("Add a new specification (kb, external, or script type)."),
+		mcpgo.WithDescription("Add a new specification (kb, external, or script type). Persists to specs.json under the resolved scope."),
+		mcpgo.WithString("scope", mcpgo.Description("Specification scope: project or global. Defaults to project when running in a project directory, else global."), mcpgo.Enum("project", "global")),
 		mcpgo.WithString("id", mcpgo.Description("Unique specification ID"), mcpgo.Required()),
 		mcpgo.WithString("type", mcpgo.Description("Specification type: kb, external, or script"), mcpgo.Required()),
 		mcpgo.WithString("name", mcpgo.Description("Specification display name")),
@@ -83,7 +86,8 @@ func (s *Server) registerSpecTools() {
 	)
 	deleteSpecTool := mcpgo.NewTool(
 		"delete_specification",
-		mcpgo.WithDescription("Delete a specification by ID."),
+		mcpgo.WithDescription("Delete a runtime specification by ID. Static specifications from knowledger.yaml cannot be deleted."),
+		mcpgo.WithString("scope", mcpgo.Description("Scope to delete from: project or global. Defaults to project when in a project directory, else global."), mcpgo.Enum("project", "global")),
 		mcpgo.WithString("id", mcpgo.Description("Specification ID to delete"), mcpgo.Required()),
 		mcpgo.WithReadOnlyHintAnnotation(false),
 		mcpgo.WithDestructiveHintAnnotation(true),
@@ -174,7 +178,11 @@ func (s *Server) handleAddSpecification(_ context.Context, request mcpgo.CallToo
 			OutputFormat: input.OutputFormat,
 		},
 	}
-	if err := s.svc.AddSpecification(spec); err != nil {
+	scope, err := s.defaultScope(input.Scope)
+	if err != nil {
+		return mcpgo.NewToolResultError(err.Error()), nil
+	}
+	if err := s.svc.AddSpecification(scope, spec); err != nil {
 		return mcpgo.NewToolResultError(err.Error()), nil
 	}
 	return mcpgo.NewToolResultText("specification \"" + input.ID + "\" added"), nil
@@ -191,7 +199,11 @@ func (s *Server) handleDeleteSpecification(_ context.Context, request mcpgo.Call
 	if input.ID == "" {
 		return mcpgo.NewToolResultError("id is required"), nil
 	}
-	if err := s.svc.DeleteSpecification(input.ID); err != nil {
+	scope, err := s.defaultScope(input.Scope)
+	if err != nil {
+		return mcpgo.NewToolResultError(err.Error()), nil
+	}
+	if err := s.svc.DeleteSpecification(scope, input.ID); err != nil {
 		return mcpgo.NewToolResultError(err.Error()), nil
 	}
 	return mcpgo.NewToolResultText("specification \"" + input.ID + "\" deleted"), nil

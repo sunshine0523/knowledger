@@ -22,6 +22,7 @@ import (
 	kbprovider "github.com/kindbrave/claude-knowledger/internal/spec/kb"
 	extprovider "github.com/kindbrave/claude-knowledger/internal/spec/external"
 	scriptprovider "github.com/kindbrave/claude-knowledger/internal/spec/script"
+	"github.com/kindbrave/claude-knowledger/internal/specregistry"
 )
 
 // Version is set at build time via -ldflags "-X github.com/kindbrave/claude-knowledger/internal/app.Version=..."
@@ -131,6 +132,13 @@ func BuildServiceFromConfig(cfg config.Config, projectRoot string) (*service.Ser
 	if err != nil {
 		return nil, err
 	}
+	globalSpecStore := specregistry.NewFileStore(cfg.SpecRegistryPath)
+	var projectSpecStore specregistry.Store
+	if projectRoot != "" {
+		projectSpecStore = specregistry.NewFileStore(filepath.Join(projectRoot, projectroot.MarkerDirName, "specs.json"))
+	}
+	specReg := specregistry.New(cfg.Specifications, globalSpecStore, projectSpecStore, projectRoot)
+	svc.SetSpecRegistry(specReg)
 	scope := core.ScopeGlobal
 	if projectRoot != "" {
 		scope = core.ScopeProject
@@ -138,10 +146,13 @@ func BuildServiceFromConfig(cfg config.Config, projectRoot string) (*service.Ser
 	svc.SetSpecEngineBuilder(func(specs []config.SpecificationConfig) service.SpecEngine {
 		return buildSpecEngine(specs, svc, scope)
 	})
-	if len(cfg.Specifications) > 0 {
-		engine := buildSpecEngine(cfg.Specifications, svc, scope)
-		svc.SetSpecEngine(engine)
-		svc.SetSpecs(cfg.Specifications)
+	mergedSpecs, err := specReg.List()
+	if err != nil {
+		return nil, err
+	}
+	if len(mergedSpecs) > 0 {
+		svc.SetSpecs(mergedSpecs)
+		svc.SetSpecEngine(buildSpecEngine(mergedSpecs, svc, scope))
 	}
 	return svc, nil
 }

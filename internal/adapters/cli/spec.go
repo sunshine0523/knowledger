@@ -121,7 +121,11 @@ func newSpecAddCommand(svc *service.Service) *cobra.Command {
 					OutputFormat: outputFormat,
 				},
 			}
-			if err := svc.AddSpecification(spec); err != nil {
+			scope, err := EffectiveScope(ScopeFlagValue(), svc.HasProjectScope())
+			if err != nil {
+				return err
+			}
+			if err := svc.AddSpecification(scope, spec); err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "specification %q added\n", id)
@@ -153,7 +157,11 @@ func newSpecDeleteCommand(svc *service.Service) *cobra.Command {
 			if svc == nil {
 				return fmt.Errorf("service is not configured")
 			}
-			if err := svc.DeleteSpecification(args[0]); err != nil {
+			scope, err := EffectiveScope(ScopeFlagValue(), svc.HasProjectScope())
+			if err != nil {
+				return err
+			}
+			if err := svc.DeleteSpecification(scope, args[0]); err != nil {
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "specification %q deleted\n", args[0])

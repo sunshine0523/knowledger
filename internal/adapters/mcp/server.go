@@ -300,7 +300,39 @@ func (s *Server) registerTools() {
 		mcpgo.WithIdempotentHintAnnotation(true),
 		mcpgo.WithOpenWorldHintAnnotation(false),
 	)
-	s.tools = []mcpgo.Tool{getTool, listItemsTool, addTool, deleteTool, listTool, createKBTool, deleteKBTool, indexTool, gitKnowledgeAddTool, gitKnowledgePullTool, gitKnowledgeListTool}
+
+	specGitAddTool := mcpgo.NewTool(
+		"spec_git_add",
+		mcpgo.WithDescription("Clone a git repository as a kb-type specification (rule set). Stores to ~/.knowledger/git-spec/<id>/ (global) or <project>/.knowledger/git-spec/<id>/ (project), registers a text knowledge base at that path, and creates a kb-type spec pointing at it. After cloning, call index_knowledge to index the KB."),
+		scopeProperty,
+		mcpgo.WithString("url", mcpgo.Required(), mcpgo.Description("Git repository URL to clone.")),
+		mcpgo.WithString("id", mcpgo.Description("Specification ID (derived from repository name if omitted).")),
+		mcpgo.WithString("name", mcpgo.Description("Human-readable name (defaults to id).")),
+		mcpgo.WithArray("tags", mcpgo.Description("Optional tag filter narrowing which KB items participate as rules."), mcpgo.WithStringItems()),
+		mcpgo.WithReadOnlyHintAnnotation(false),
+		mcpgo.WithDestructiveHintAnnotation(false),
+		mcpgo.WithIdempotentHintAnnotation(false),
+		mcpgo.WithOpenWorldHintAnnotation(false),
+	)
+	specGitPullTool := mcpgo.NewTool(
+		"spec_git_pull",
+		mcpgo.WithDescription("Pull latest changes for a spec-git specification. After pulling, call index_knowledge to reindex the backing KB."),
+		scopeProperty,
+		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Specification ID.")),
+		mcpgo.WithReadOnlyHintAnnotation(false),
+		mcpgo.WithDestructiveHintAnnotation(false),
+		mcpgo.WithIdempotentHintAnnotation(true),
+		mcpgo.WithOpenWorldHintAnnotation(false),
+	)
+	specGitListTool := mcpgo.NewTool(
+		"spec_git_list",
+		mcpgo.WithDescription("List all spec-git specifications from global (~/.knowledger/git-spec/) and project (.knowledger/git-spec/) directories. Only returns directories that are still registered as knowledge bases."),
+		mcpgo.WithReadOnlyHintAnnotation(true),
+		mcpgo.WithDestructiveHintAnnotation(false),
+		mcpgo.WithIdempotentHintAnnotation(true),
+		mcpgo.WithOpenWorldHintAnnotation(false),
+	)
+	s.tools = []mcpgo.Tool{getTool, listItemsTool, addTool, deleteTool, listTool, createKBTool, deleteKBTool, indexTool, gitKnowledgeAddTool, gitKnowledgePullTool, gitKnowledgeListTool, specGitAddTool, specGitPullTool, specGitListTool}
 	s.server.AddTool(getTool, s.handleGetKnowledgeItem)
 	s.server.AddTool(listItemsTool, s.handleListKnowledgeItems)
 	s.server.AddTool(addTool, s.handleAddKnowledgeItem)
@@ -312,6 +344,9 @@ func (s *Server) registerTools() {
 	s.server.AddTool(gitKnowledgeAddTool, s.handleGitKnowledgeAdd)
 	s.server.AddTool(gitKnowledgePullTool, s.handleGitKnowledgePull)
 	s.server.AddTool(gitKnowledgeListTool, s.handleGitKnowledgeList)
+	s.server.AddTool(specGitAddTool, s.handleSpecGitAdd)
+	s.server.AddTool(specGitPullTool, s.handleSpecGitPull)
+	s.server.AddTool(specGitListTool, s.handleSpecGitList)
 	s.registerSpecTools()
 }
 
