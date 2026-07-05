@@ -123,25 +123,26 @@ func fetchLatestRelease() (version, assetURL string, err error) {
 	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
 		return "", "", err
 	}
-	assetName := assetFilename()
+	suffix := assetSuffix()
 	for _, a := range rel.Assets {
-		if a.Name == assetName {
+		if strings.HasSuffix(a.Name, suffix) {
 			return rel.TagName, a.BrowserDownloadURL, nil
 		}
 	}
-	return "", "", fmt.Errorf("no asset %q found in release %s", assetName, rel.TagName)
+	return "", "", fmt.Errorf("no asset matching %q found in release %s", suffix, rel.TagName)
 }
 
-// assetFilename returns the goreleaser archive name for the current platform,
-// e.g. "knowledger_linux_amd64.tar.gz" or "knowledger_windows_amd64.zip".
-func assetFilename() string {
+// assetSuffix returns the platform-specific suffix of the goreleaser archive,
+// e.g. "_linux_amd64.tar.gz" or "_windows_amd64.zip". Matching by suffix keeps
+// this resilient to the goreleaser {ProjectName}_{Version}_ prefix changing.
+func assetSuffix() string {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 	ext := "tar.gz"
 	if goos == "windows" {
 		ext = "zip"
 	}
-	return fmt.Sprintf("knowledger_%s_%s.%s", goos, goarch, ext)
+	return fmt.Sprintf("_%s_%s.%s", goos, goarch, ext)
 }
 
 func downloadAndReplace(assetURL, execPath string, out io.Writer) error {
