@@ -22,34 +22,31 @@ const serverVersion = "0.1.0"
 // because the model reads it every turn without having to scan tool
 // metadata. Keep it sharp, behavioral, and bilingual where the user base
 // asks questions in mixed languages.
-const serverInstructions = `# Knowledger — local knowledge recall, runs BEFORE answering
+const serverInstructions = `# Knowledger — rules + knowledge, runs BEFORE answering
 
-Knowledger is the project's persistent knowledge base — decisions,
-conventions, library/tool usage notes, debugging recipes, domain
-references. It captures knowledge ABOUT the code that grep, file
-reads, and codegraph cannot find.
+Knowledger exposes two orthogonal channels through MCP:
 
-## Recall — call BEFORE answering
+- **Specs (rules)** — enforceable conventions loaded IN FULL via
+  ` + "`list_spec_rules`" + `. Every rule applies; there is no relevance filter.
+- **Knowledge (KBs)** — retrieved by relevance via ` + "`search_knowledge`" + `
+  + ` + "`get_knowledge_item`" + `. For Q&A, decisions, debugging recipes, references.
 
-Call list_knowledge_bases BEFORE answering ANY of these question shapes,
-even when the user does not say "knowledge / 知识库 / 记得":
+## Two channels — rules vs knowledge
 
-- "How do I use X" / "X 怎么用"
-- "What is X"     / "X 是什么"
-- "How does X work" / "X 怎么实现"
-- "Why did we do X this way"
-- "What's our convention for X"
-- "Where do we store/track X"
-- Any debugging question that could have a saved recipe.
+BEFORE answering, writing code, designing, or making any technical recommendation:
 
-One cheap call. Scan the KB and item titles — if any look relevant,
-call get_knowledge_item for the full content.
+1. Call ` + "`list_spec_rules`" + ` — load every rule into context. Non-optional for
+   any coding/design/convention-touching task.
+2. Call ` + "`search_knowledge`" + ` (one or more queries) — retrieve relevant knowledge items.
+3. Fetch full bodies via ` + "`get_knowledge_item`" + ` for hits that look applicable.
+
+The two channels are orthogonal — one pass on each covers most tasks.
 
 ## Capture — only on explicit user intent
 
-add_knowledge_item when the user says save / capture / remember /
+` + "`add_knowledge_item`" + ` when the user says save / capture / remember /
 记一下 / 保存到 / 添加到 — and the target KB is unambiguous.
-Otherwise list_knowledge_bases and ask which KB to use.
+Otherwise ` + "`list_knowledge_bases`" + ` and ask which KB to use.
 
 ## Skip
 
@@ -169,186 +166,6 @@ func (s *Server) logModeBanner(w *os.File) {
 
 // LogModeBannerForTest exposes logModeBanner to the external test package.
 func (s *Server) LogModeBannerForTest(w *os.File) { s.logModeBanner(w) }
-
-func (s *Server) registerTools() {
-	scopeProperty := mcpgo.WithString(
-		"scope",
-		mcpgo.Description("Knowledge base scope. Defaults to project when running in a project directory, otherwise global."),
-		mcpgo.Enum("project", "global"),
-	)
-	getTool := mcpgo.NewTool(
-		"get_knowledge_item",
-		mcpgo.WithDescription("Fetch the full content and metadata of a single knowledge item by KB id + item id. Use after list_knowledge_items or list_knowledge_bases surfaces a promising hit and you need the complete text — to answer a user's question accurately, cite in a technical design/spec, or apply to code. Cheap and read-only; prefer fetching full content over deciding from a title alone."),
-		scopeProperty,
-		mcpgo.WithString("kb_id", mcpgo.Required(), mcpgo.Description("Knowledge base ID.")),
-		mcpgo.WithString("item_id", mcpgo.Required(), mcpgo.Description("Knowledge item ID.")),
-		mcpgo.WithReadOnlyHintAnnotation(true),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	listItemsTool := mcpgo.NewTool(
-		"list_knowledge_items",
-		mcpgo.WithDescription("Browse a knowledge base as a lightweight directory (id/title/tags, no content). Use when: (1) the user asks 'what is in KB X', (2) you need to scan a KB exhaustively before answering a question, drafting a technical plan, or writing code. After spotting a promising id, call get_knowledge_item for the full content."),
-		scopeProperty,
-		mcpgo.WithString("kb_id", mcpgo.Required(), mcpgo.Description("Knowledge base ID.")),
-		mcpgo.WithNumber("limit", mcpgo.Description("Maximum number of items to return. 0 means all.")),
-		mcpgo.WithNumber("offset", mcpgo.Description("Number of items to skip from the start.")),
-		mcpgo.WithReadOnlyHintAnnotation(true),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	addTool := mcpgo.NewTool(
-		"add_knowledge_item",
-		mcpgo.WithDescription("Add a knowledge item to a knowledge base."),
-		scopeProperty,
-		mcpgo.WithString("kb_id", mcpgo.Required(), mcpgo.Description("Knowledge base ID.")),
-		mcpgo.WithString("title", mcpgo.Required(), mcpgo.Description("Item title.")),
-		mcpgo.WithString("content", mcpgo.Required(), mcpgo.Description("Item content.")),
-		mcpgo.WithArray("tags", mcpgo.Description("Optional item tags."), mcpgo.WithStringItems()),
-		mcpgo.WithObject("metadata", mcpgo.Description("Optional item metadata."), mcpgo.AdditionalProperties(true)),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(false),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	deleteTool := mcpgo.NewTool(
-		"delete_knowledge_item",
-		mcpgo.WithDescription("Delete a knowledge item from a knowledge base."),
-		scopeProperty,
-		mcpgo.WithString("kb_id", mcpgo.Required(), mcpgo.Description("Knowledge base ID.")),
-		mcpgo.WithString("item_id", mcpgo.Required(), mcpgo.Description("Knowledge item ID.")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(true),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	listTool := mcpgo.NewTool(
-		"list_knowledge_bases",
-		mcpgo.WithDescription("List all configured knowledge bases AND every item id/title/tags. CALL EARLY at the start of any non-trivial task — title/tag scans surface entries that might otherwise be missed. Cheap, read-only; one upfront call beats guessing kb_ids. Use get_knowledge_item for full content."),
-		mcpgo.WithReadOnlyHintAnnotation(true),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	createKBTool := mcpgo.NewTool(
-		"create_knowledge_base",
-		mcpgo.WithDescription("Create a new knowledge base. Path is required for global scope; for project scope a relative path is resolved against the project root."),
-		scopeProperty,
-		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Knowledge base ID (letters, digits, underscore, dash, dot; max 64 chars).")),
-		mcpgo.WithString("name", mcpgo.Description("Human-readable name. Defaults to id.")),
-		mcpgo.WithString("store_type", mcpgo.Required(), mcpgo.Description("Backend store type."), mcpgo.Enum("text", "sqlite")),
-		mcpgo.WithString("path", mcpgo.Description("Storage path. Required for global scope; relative paths for project scope are resolved against the project root.")),
-		mcpgo.WithBoolean("enabled", mcpgo.Description("Whether the knowledge base is enabled. Defaults to true.")),
-		mcpgo.WithBoolean("semantic_enabled", mcpgo.Description("Enable semantic indexing for sqlite store types.")),
-		mcpgo.WithArray("tags", mcpgo.Description("Optional knowledge base tags."), mcpgo.WithStringItems()),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(false),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	deleteKBTool := mcpgo.NewTool(
-		"delete_knowledge_base",
-		mcpgo.WithDescription("Delete a runtime-managed knowledge base. Static knowledge bases declared in config files cannot be deleted."),
-		scopeProperty,
-		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Knowledge base ID.")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(true),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	indexTool := mcpgo.NewTool(
-		"index_knowledge",
-		mcpgo.WithDescription("Backfill or rebuild semantic indexes for one knowledge base or all enabled knowledge bases."),
-		scopeProperty,
-		mcpgo.WithString("kb_id", mcpgo.Description("Optional knowledge base ID. Omit to index all enabled knowledge bases.")),
-		mcpgo.WithBoolean("rebuild", mcpgo.Description("Delete existing semantic vectors before indexing.")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(true),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-
-	gitKnowledgeAddTool := mcpgo.NewTool(
-		"git_knowledge_add",
-		mcpgo.WithDescription("Clone a git repository as a text knowledge base. Stores to ~/.knowledger/git-knowledge/<id>/ (global) or <project>/.knowledger/git-knowledge/<id>/ (project) and registers it. After cloning, call index_knowledge to index it."),
-		scopeProperty,
-		mcpgo.WithString("url", mcpgo.Required(), mcpgo.Description("Git repository URL to clone.")),
-		mcpgo.WithString("id", mcpgo.Description("Knowledge base ID (derived from repository name if omitted).")),
-		mcpgo.WithString("name", mcpgo.Description("Human-readable name (defaults to id).")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(false),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	gitKnowledgePullTool := mcpgo.NewTool(
-		"git_knowledge_pull",
-		mcpgo.WithDescription("Pull latest changes for a git-knowledge knowledge base. After pulling, call index_knowledge to reindex."),
-		scopeProperty,
-		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Knowledge base ID.")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	gitKnowledgeListTool := mcpgo.NewTool(
-		"git_knowledge_list",
-		mcpgo.WithDescription("List all git-knowledge knowledge bases from global (~/.knowledger/git-knowledge/) and project (.knowledger/git-knowledge/) directories. Only returns directories that are still registered as knowledge bases."),
-		mcpgo.WithReadOnlyHintAnnotation(true),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-
-	specGitAddTool := mcpgo.NewTool(
-		"spec_git_add",
-		mcpgo.WithDescription("Clone a git repository as a kb-type specification (rule set). Stores to ~/.knowledger/git-spec/<id>/ (global) or <project>/.knowledger/git-spec/<id>/ (project), registers a text knowledge base at that path, and creates a kb-type spec pointing at it. After cloning, call index_knowledge to index the KB."),
-		scopeProperty,
-		mcpgo.WithString("url", mcpgo.Required(), mcpgo.Description("Git repository URL to clone.")),
-		mcpgo.WithString("id", mcpgo.Description("Specification ID (derived from repository name if omitted).")),
-		mcpgo.WithString("name", mcpgo.Description("Human-readable name (defaults to id).")),
-		mcpgo.WithArray("tags", mcpgo.Description("Optional tag filter narrowing which KB items participate as rules."), mcpgo.WithStringItems()),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(false),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	specGitPullTool := mcpgo.NewTool(
-		"spec_git_pull",
-		mcpgo.WithDescription("Pull latest changes for a spec-git specification. After pulling, call index_knowledge to reindex the backing KB."),
-		scopeProperty,
-		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Specification ID.")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	specGitListTool := mcpgo.NewTool(
-		"spec_git_list",
-		mcpgo.WithDescription("List all spec-git specifications from global (~/.knowledger/git-spec/) and project (.knowledger/git-spec/) directories. Only returns directories that are still registered as knowledge bases."),
-		mcpgo.WithReadOnlyHintAnnotation(true),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	s.tools = []mcpgo.Tool{getTool, listItemsTool, addTool, deleteTool, listTool, createKBTool, deleteKBTool, indexTool, gitKnowledgeAddTool, gitKnowledgePullTool, gitKnowledgeListTool, specGitAddTool, specGitPullTool, specGitListTool}
-	s.server.AddTool(getTool, s.handleGetKnowledgeItem)
-	s.server.AddTool(listItemsTool, s.handleListKnowledgeItems)
-	s.server.AddTool(addTool, s.handleAddKnowledgeItem)
-	s.server.AddTool(deleteTool, s.handleDeleteKnowledgeItem)
-	s.server.AddTool(listTool, s.handleListKnowledgeBases)
-	s.server.AddTool(createKBTool, s.handleCreateKnowledgeBase)
-	s.server.AddTool(deleteKBTool, s.handleDeleteKnowledgeBase)
-	s.server.AddTool(indexTool, s.handleIndexKnowledge)
-	s.server.AddTool(gitKnowledgeAddTool, s.handleGitKnowledgeAdd)
-	s.server.AddTool(gitKnowledgePullTool, s.handleGitKnowledgePull)
-	s.server.AddTool(gitKnowledgeListTool, s.handleGitKnowledgeList)
-	s.server.AddTool(specGitAddTool, s.handleSpecGitAdd)
-	s.server.AddTool(specGitPullTool, s.handleSpecGitPull)
-	s.server.AddTool(specGitListTool, s.handleSpecGitList)
-	s.registerSpecTools()
-}
 
 func (s *Server) handleGetKnowledgeItem(ctx context.Context, request mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 	if s.svc == nil {

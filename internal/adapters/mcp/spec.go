@@ -46,6 +46,15 @@ type addRuleToSpecInput struct {
 }
 
 func (s *Server) registerSpecTools() {
+	listSpecRulesTool := mcpgo.NewTool(
+		"list_spec_rules",
+		mcpgo.WithDescription("列出所有规范（specifications）并返回每个已启用 kb-type 规范的完整规则条目。在任何涉及编码、设计或约定的任务开始时必须调用——返回的规则全部强制执行，不做相关性过滤。不执行 external/script 类型的 linter（如需 lint 结果请用 run_lint）。纯只读，一次调用拿全量。通用知识（Q&A、决策、调试配方）请用 search_knowledge，本工具只用于可执行规范。"),
+		mcpgo.WithString("scope", mcpgo.Description("Specification scope: project or global. 省略则返回所有 scope。"), mcpgo.Enum("project", "global")),
+		mcpgo.WithReadOnlyHintAnnotation(true),
+		mcpgo.WithDestructiveHintAnnotation(false),
+		mcpgo.WithIdempotentHintAnnotation(true),
+		mcpgo.WithOpenWorldHintAnnotation(false),
+	)
 	listSpecTool := mcpgo.NewTool(
 		"list_specifications",
 		mcpgo.WithDescription("List all configured specifications (id, name, type, enabled)."),
@@ -108,14 +117,14 @@ func (s *Server) registerSpecTools() {
 		mcpgo.WithOpenWorldHintAnnotation(false),
 	)
 
-	s.tools = append(s.tools, listSpecTool, runLintTool, addSpecTool, deleteSpecTool, addRuleToSpecTool)
+	s.tools = append(s.tools, listSpecRulesTool, listSpecTool, runLintTool, addSpecTool, deleteSpecTool, addRuleToSpecTool)
+	s.server.AddTool(listSpecRulesTool, s.handleListSpecRules)
 	s.server.AddTool(listSpecTool, s.handleListSpecifications)
 	s.server.AddTool(runLintTool, s.handleRunLint)
 	s.server.AddTool(addSpecTool, s.handleAddSpecification)
 	s.server.AddTool(deleteSpecTool, s.handleDeleteSpecification)
 	s.server.AddTool(addRuleToSpecTool, s.handleAddRuleToSpec)
 }
-
 
 func (s *Server) handleListSpecifications(_ context.Context, _ mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error) {
 	if s.svc == nil {

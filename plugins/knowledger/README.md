@@ -69,11 +69,37 @@ If `knowledger` is not on `PATH`, install it or start Claude Code from a shell w
 
 ## Expected MCP Tools
 
-The MCP server exposes:
+The MCP server exposes two retrieval channels plus management tools:
 
+Spec rules:
+
+- `list_spec_rules`
+- `list_specifications`
+- `run_lint`
+- `add_specification`
+- `delete_specification`
+- `add_rule_to_spec`
+
+Knowledge retrieval and management:
+
+- `search_knowledge`
 - `get_knowledge_item`
+- `list_knowledge_items`
 - `add_knowledge_item`
+- `delete_knowledge_item`
 - `list_knowledge_bases`
+- `create_knowledge_base`
+- `delete_knowledge_base`
+- `index_knowledge`
+
+Git-backed knowledge and specs:
+
+- `git_knowledge_add`
+- `git_knowledge_pull`
+- `git_knowledge_list`
+- `spec_git_add`
+- `spec_git_pull`
+- `spec_git_list`
 
 ## Safety
 
