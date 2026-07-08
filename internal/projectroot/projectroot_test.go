@@ -31,6 +31,28 @@ func TestDiscoverFromFindsClosestKnowledgerDir(t *testing.T) {
 	}
 }
 
+func TestDiscoverFromFindsGitRootWhenKnowledgerDirAbsent(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "a", "b")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
+
+	got, found, err := projectroot.DiscoverFrom(nested)
+	if err != nil {
+		t.Fatalf("DiscoverFrom returned error: %v", err)
+	}
+	if !found {
+		t.Fatalf("expected found=true")
+	}
+	if got != root {
+		t.Fatalf("got root %q, want %q", got, root)
+	}
+}
+
 func TestDiscoverFromReturnsNotFoundWhenAbsent(t *testing.T) {
 	root := t.TempDir()
 	got, found, err := projectroot.DiscoverFrom(root)

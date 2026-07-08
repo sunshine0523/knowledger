@@ -1281,7 +1281,9 @@ func TestServiceCreateKnowledgeBaseProjectFailsWithoutProjectStore(t *testing.T)
 func TestServiceHasProjectScope(t *testing.T) {
 	regNo := registry.New(nil, registry.NewMemoryStore(nil), nil, "")
 	regYes := registry.New(nil, registry.NewMemoryStore(nil), registry.NewMemoryStore(nil), "/tmp/p")
-	build := func(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) { return map[string]core.StoreBackend{}, nil }
+	build := func(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) {
+		return map[string]core.StoreBackend{}, nil
+	}
 	svcNo, _ := service.NewManaged(regNo, build)
 	svcYes, _ := service.NewManaged(regYes, build)
 	if svcNo.HasProjectScope() {
@@ -1371,6 +1373,41 @@ func TestServiceRefreshesWhenRegistryFileChangesExternally(t *testing.T) {
 	// explicit Reload — this covers the MCP "kb just appeared" path.
 	if _, _, _, err := svc.Add(context.Background(), core.AddInput{KBID: "notes", Scope: core.ScopeGlobal, Title: "t", Content: "c"}); err != nil {
 		t.Fatalf("Add against externally-added KB returned error: %v", err)
+	}
+}
+
+func TestServiceRefreshesWhenProjectRegistryAppearsExternally(t *testing.T) {
+	projectRoot := t.TempDir()
+	projectRegistryPath := filepath.Join(projectRoot, ".knowledger", "registry.json")
+	reg := registry.New(nil, registry.NewMemoryStore(nil), nil, projectRoot)
+
+	var buildCalls int
+	build := func(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) {
+		buildCalls++
+		return map[string]core.StoreBackend{"text": fakeBackend{}, "sqlite": fakeBackend{}}, nil
+	}
+	svc, err := service.NewManaged(reg, build)
+	if err != nil {
+		t.Fatalf("NewManaged returned error: %v", err)
+	}
+	if got := len(svc.ListKnowledgeBases()); got != 0 {
+		t.Fatalf("expected empty registry at startup, got %d", got)
+	}
+	initialBuilds := buildCalls
+
+	external := registry.NewFileStore(projectRegistryPath)
+	if err := external.Save([]registry.RuntimeKnowledgeBase{{
+		ID: "notes", Name: "Notes", StoreType: "sqlite", Enabled: true,
+	}}); err != nil {
+		t.Fatalf("external Save returned error: %v", err)
+	}
+
+	gotKBs := svc.ListKnowledgeBases()
+	if len(gotKBs) != 1 || gotKBs[0].ID != "notes" || gotKBs[0].Scope != core.ScopeProject {
+		t.Fatalf("expected ListKnowledgeBases to discover external project KB, got %#v", gotKBs)
+	}
+	if buildCalls == initialBuilds {
+		t.Fatalf("expected buildBackends to run during project refresh; calls=%d", buildCalls)
 	}
 }
 

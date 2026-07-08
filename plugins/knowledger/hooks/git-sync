@@ -22,7 +22,7 @@ else:
         if not kid:
             continue
         r = subprocess.run(
-            ['knowledger', 'kb-git-knowledge-pull', '--id', kid],
+            ['knowledger', 'kb-git-knowledge-pull', '--scope', scope, '--id', kid],
             capture_output=True, text=True, env=env,
         )
         if r.returncode != 0:
@@ -33,7 +33,7 @@ else:
             lines.append(f'git-sync: [{kid}] already up to date')
             continue
         idx = subprocess.run(
-            ['knowledger', 'index', '--kb', kid, '--quiet'],
+            ['knowledger', 'index', '--scope', scope, '--kb', kid, '--quiet'],
             capture_output=True, text=True, env=env,
         )
         if idx.returncode != 0:

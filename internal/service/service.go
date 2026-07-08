@@ -323,7 +323,7 @@ func (s *Service) CreateKnowledgeBase(ctx context.Context, input CreateKnowledge
 	for _, rec := range existing {
 		prospective = append(prospective, rec.KnowledgeBase)
 	}
-	prospective = append(prospective, runtimeToCoreScoped(runtimeKB, scope))
+	prospective = append(prospective, runtimeToCoreForCreate(runtimeKB, scope, s.registry.ProjectRoot()))
 	prospectiveBackends, err := s.buildBackends(prospective)
 	if err != nil {
 		return registry.KnowledgeBaseRecord{}, err
@@ -742,6 +742,27 @@ func runtimeToCoreScoped(item registry.RuntimeKnowledgeBase, scope string) core.
 		Indexing:          item.Indexing,
 		Tags:              item.Tags,
 	}
+}
+
+func runtimeToCoreForCreate(item registry.RuntimeKnowledgeBase, scope, projectRoot string) core.KnowledgeBase {
+	if scope != core.ScopeProject {
+		return runtimeToCoreScoped(item, scope)
+	}
+	if item.StoreConfig == nil {
+		item.StoreConfig = map[string]any{}
+	}
+	path, _ := item.StoreConfig["path"].(string)
+	if strings.TrimSpace(path) == "" {
+		switch item.StoreType {
+		case "sqlite":
+			item.StoreConfig["path"] = filepath.Join(projectRoot, ".knowledger", "db")
+		case "text":
+			item.StoreConfig["path"] = filepath.Join(projectRoot, ".knowledger", "data", item.ID)
+		}
+	} else if !filepath.IsAbs(path) {
+		item.StoreConfig["path"] = filepath.Join(projectRoot, path)
+	}
+	return runtimeToCoreScoped(item, scope)
 }
 
 const searchSnippetContextRunes = 120

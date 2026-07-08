@@ -10,6 +10,7 @@ import (
 
 	"github.com/kindbrave/claude-knowledger/internal/config"
 	"github.com/kindbrave/claude-knowledger/internal/core"
+	"github.com/kindbrave/claude-knowledger/internal/projectroot"
 )
 
 const (
@@ -36,6 +37,9 @@ type Registry struct {
 }
 
 func New(static []config.KnowledgeBaseConfig, globalStore, projectStore Store, projectRoot string) *Registry {
+	if projectStore == nil && projectRoot != "" {
+		projectStore = NewFileStore(filepath.Join(projectRoot, projectroot.MarkerDirName, "registry.json"))
+	}
 	return &Registry{
 		static:       static,
 		globalStore:  globalStore,

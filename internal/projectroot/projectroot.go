@@ -8,9 +8,7 @@ import (
 
 const MarkerDirName = ".knowledger"
 
-// Discover walks up from the current working directory looking for a
-// `.knowledger/` directory. Returns the directory containing the marker
-// (absolute path) when found. err is non-nil only on filesystem read failures.
+// Discover walks up from the current working directory looking for a project marker.
 func Discover() (string, bool, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -33,13 +31,12 @@ func DiscoverFrom(start string) (string, bool, error) {
 		if home != "" && dir == home {
 			return "", false, nil
 		}
-		marker := filepath.Join(dir, MarkerDirName)
-		info, err := os.Stat(marker)
-		if err == nil && info.IsDir() {
-			return dir, true, nil
-		}
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
+		found, err := hasProjectMarker(dir)
+		if err != nil {
 			return "", false, err
+		}
+		if found {
+			return dir, true, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -47,4 +44,17 @@ func DiscoverFrom(start string) (string, bool, error) {
 		}
 		dir = parent
 	}
+}
+
+func hasProjectMarker(dir string) (bool, error) {
+	for _, name := range []string{MarkerDirName, ".git"} {
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err == nil {
+			return info.IsDir(), nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return false, err
+		}
+	}
+	return false, nil
 }

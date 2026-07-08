@@ -173,6 +173,33 @@ func TestRunDefaultInvokesMCPRunner(t *testing.T) {
 	}
 }
 
+func TestRunDefaultCreatesProjectKnowledgeBaseBeforeKnowledgerDirExists(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	projectRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("chdir project: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Fatalf("restore wd: %v", err)
+		}
+	}()
+
+	if err := app.RunDefault([]string{"kb-create", "--id", "notes", "--store-type", "sqlite"}); err != nil {
+		t.Fatalf("RunDefault kb-create returned error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, ".knowledger", "registry.json")); err != nil {
+		t.Fatalf("expected project registry to be created: %v", err)
+	}
+}
+
 func TestRunDefaultInstallClaudeInvokesInstallRunner(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	called := 0
