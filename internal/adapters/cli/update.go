@@ -19,6 +19,8 @@ import (
 
 const githubRepo = "sunshine0523/claude-knowledger"
 
+var githubAPIBaseURL = "https://api.github.com"
+
 type UpdateRunner func(version string, runClaudeInstall ClaudeInstallRunner, out, errOut io.Writer) error
 
 func newUpdateCommand(version string, runClaudeInstall ClaudeInstallRunner, runUpdate UpdateRunner) *cobra.Command {
@@ -50,16 +52,22 @@ func newUpdateCommand(version string, runClaudeInstall ClaudeInstallRunner, runU
 }
 
 func DefaultUpdateRunner(version string, runClaudeInstall ClaudeInstallRunner, out, errOut io.Writer) error {
-	latest, assetURL, err := fetchLatestRelease()
+	rel, err := fetchLatestReleaseMetadata()
 	if err != nil {
 		return fmt.Errorf("checking for updates: %w", err)
 	}
+	latest := releaseVersion(rel.TagName)
 
-	if version == latest {
+	if sameVersion(version, latest) {
 		fmt.Fprintf(out, "Already up to date (%s)\n", version)
 		return nil
 	}
 	fmt.Fprintf(out, "Updating %s → %s\n", version, latest)
+
+	assetURL, err := releaseAssetURL(rel)
+	if err != nil {
+		return fmt.Errorf("checking for updates: %w", err)
+	}
 
 	execPath, err := os.Executable()
 	if err != nil {
@@ -86,11 +94,12 @@ func DefaultUpdateRunner(version string, runClaudeInstall ClaudeInstallRunner, o
 }
 
 func checkLatestVersion(current string, out io.Writer) error {
-	latest, _, err := fetchLatestRelease()
+	rel, err := fetchLatestReleaseMetadata()
 	if err != nil {
 		return fmt.Errorf("checking for updates: %w", err)
 	}
-	if current == latest {
+	latest := releaseVersion(rel.TagName)
+	if sameVersion(current, latest) {
 		fmt.Fprintf(out, "Up to date (%s)\n", current)
 	} else {
 		fmt.Fprintf(out, "Update available: %s → %s\n", current, latest)
@@ -110,26 +119,50 @@ type ghAsset struct {
 }
 
 func fetchLatestRelease() (version, assetURL string, err error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo)
-	resp, err := http.Get(url) //nolint:noctx
+	rel, err := fetchLatestReleaseMetadata()
 	if err != nil {
 		return "", "", err
 	}
+	assetURL, err = releaseAssetURL(rel)
+	if err != nil {
+		return "", "", err
+	}
+	return releaseVersion(rel.TagName), assetURL, nil
+}
+
+func fetchLatestReleaseMetadata() (ghRelease, error) {
+	url := fmt.Sprintf("%s/repos/%s/releases/latest", strings.TrimRight(githubAPIBaseURL, "/"), githubRepo)
+	resp, err := http.Get(url) //nolint:noctx
+	if err != nil {
+		return ghRelease{}, err
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+		return ghRelease{}, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
 	var rel ghRelease
 	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
-		return "", "", err
+		return ghRelease{}, err
 	}
+	return rel, nil
+}
+
+func releaseAssetURL(rel ghRelease) (string, error) {
 	suffix := assetSuffix()
 	for _, a := range rel.Assets {
 		if strings.HasSuffix(a.Name, suffix) {
-			return rel.TagName, a.BrowserDownloadURL, nil
+			return a.BrowserDownloadURL, nil
 		}
 	}
-	return "", "", fmt.Errorf("no asset matching %q found in release %s", suffix, rel.TagName)
+	return "", fmt.Errorf("no asset matching %q found in release %s", suffix, rel.TagName)
+}
+
+func releaseVersion(tagName string) string {
+	return strings.TrimPrefix(tagName, "v")
+}
+
+func sameVersion(a, b string) bool {
+	return releaseVersion(a) == releaseVersion(b)
 }
 
 // assetSuffix returns the platform-specific suffix of the goreleaser archive,
