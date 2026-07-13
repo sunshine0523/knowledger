@@ -106,6 +106,16 @@ http://127.0.0.1:34125/
 
 ## MCP Server
 
+为 Codex 安装完整集成：
+
+```bash
+knowledger install --codex
+```
+
+此命令会安装 Knowledger Codex 插件、skills 和 MCP server 配置。安装完成后请新建 Codex 对话加载插件。
+
+安装 Claude Code 集成：
+
 ```bash
 knowledger install --claude
 ```

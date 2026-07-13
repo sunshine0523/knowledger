@@ -105,6 +105,16 @@ Runtime knowledge bases created from the Web dashboard are stored in `~/.knowled
 
 ## MCP Server
 
+Install the full integration for Codex:
+
+```bash
+knowledger install --codex
+```
+
+This installs the Knowledger Codex plugin, its skills, and its MCP server configuration. Start a new Codex thread after installation.
+
+Install the Claude Code integration:
+
 ```bash
 knowledger install --claude
 ```

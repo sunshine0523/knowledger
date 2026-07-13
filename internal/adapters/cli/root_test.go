@@ -48,6 +48,9 @@ func TestRootInstallClaudeCallsInjectedRunnerOnce(t *testing.T) {
 		called++
 		return nil
 	}, func(out, errOut io.Writer) error {
+		t.Fatalf("codex runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
 		t.Fatalf("opencode runner should not be called")
 		return nil
 	}, nil)
@@ -61,10 +64,35 @@ func TestRootInstallClaudeCallsInjectedRunnerOnce(t *testing.T) {
 	}
 }
 
+func TestRootInstallCodexCallsInjectedRunnerOnce(t *testing.T) {
+	called := 0
+	cmd := cli.NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", "dev", func() error { return nil }, func(out, errOut io.Writer) error {
+		t.Fatalf("claude runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
+		called++
+		return nil
+	}, func(out, errOut io.Writer) error {
+		t.Fatalf("opencode runner should not be called")
+		return nil
+	}, nil)
+	cmd.SetArgs([]string{"install", "--codex"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if called != 1 {
+		t.Fatalf("expected install runner to be called once, got %d", called)
+	}
+}
+
 func TestRootInstallOpenCodeCallsInjectedRunnerOnce(t *testing.T) {
 	called := 0
 	cmd := cli.NewRootCommandWithAddressAndRunners(nil, "127.0.0.1:0", "dev", func() error { return nil }, func(out, errOut io.Writer) error {
 		t.Fatalf("claude runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
+		t.Fatalf("codex runner should not be called")
 		return nil
 	}, func(out, errOut io.Writer) error {
 		called++

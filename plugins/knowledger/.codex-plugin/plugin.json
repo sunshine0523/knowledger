@@ -1,0 +1,27 @@
+{
+  "name": "knowledger",
+  "version": "0.2.0",
+  "description": "Local-first knowledge retrieval and capture for Codex through the Knowledger MCP server.",
+  "author": {
+    "name": "KindBrave",
+    "url": "https://github.com/sunshine0523"
+  },
+  "homepage": "https://github.com/sunshine0523/claude-knowledger",
+  "repository": "https://github.com/sunshine0523/claude-knowledger",
+  "keywords": ["knowledge", "memory", "mcp", "codex"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Knowledger",
+    "shortDescription": "Search and capture durable local knowledge.",
+    "longDescription": "Connect Codex to local Knowledger knowledge bases for retrieval, capture, Git-backed knowledge, specifications, and convention review.",
+    "developerName": "KindBrave",
+    "category": "Productivity",
+    "capabilities": ["Knowledge retrieval", "Knowledge capture", "Code review"],
+    "websiteURL": "https://github.com/sunshine0523/claude-knowledger",
+    "defaultPrompt": [
+      "Search Knowledger for relevant project decisions.",
+      "Save this decision to the appropriate knowledge base.",
+      "Review these changes against stored conventions."
+    ]
+  }
+}

@@ -14,13 +14,14 @@ import (
 	"github.com/kindbrave/claude-knowledger/internal/indexing/chunking"
 	"github.com/kindbrave/claude-knowledger/internal/indexing/semantic"
 	"github.com/kindbrave/claude-knowledger/internal/install/claude"
+	"github.com/kindbrave/claude-knowledger/internal/install/codex"
 	"github.com/kindbrave/claude-knowledger/internal/install/opencode"
 	"github.com/kindbrave/claude-knowledger/internal/projectroot"
 	"github.com/kindbrave/claude-knowledger/internal/registry"
 	"github.com/kindbrave/claude-knowledger/internal/service"
 	"github.com/kindbrave/claude-knowledger/internal/spec"
-	kbprovider "github.com/kindbrave/claude-knowledger/internal/spec/kb"
 	extprovider "github.com/kindbrave/claude-knowledger/internal/spec/external"
+	kbprovider "github.com/kindbrave/claude-knowledger/internal/spec/kb"
 	scriptprovider "github.com/kindbrave/claude-knowledger/internal/spec/script"
 	"github.com/kindbrave/claude-knowledger/internal/specregistry"
 )
@@ -31,6 +32,7 @@ var Version = "dev"
 type MCPRunner func(*service.Service) error
 
 type ClaudeInstallRunner func(out, errOut io.Writer) error
+type CodexInstallRunner func(out, errOut io.Writer) error
 type OpenCodeInstallRunner func(out, errOut io.Writer) error
 
 var runMCPServer MCPRunner = func(svc *service.Service) error {
@@ -39,6 +41,10 @@ var runMCPServer MCPRunner = func(svc *service.Service) error {
 
 var runClaudeInstall ClaudeInstallRunner = func(out, errOut io.Writer) error {
 	return claude.NewInstaller().Install(out, errOut)
+}
+
+var runCodexInstall CodexInstallRunner = func(out, errOut io.Writer) error {
+	return codex.NewInstaller().Install(out, errOut)
 }
 
 var runOpenCodeInstall OpenCodeInstallRunner = func(out, errOut io.Writer) error {
@@ -55,6 +61,12 @@ func SetClaudeInstallRunnerForTest(runner ClaudeInstallRunner) func() {
 	previous := runClaudeInstall
 	runClaudeInstall = runner
 	return func() { runClaudeInstall = previous }
+}
+
+func SetCodexInstallRunnerForTest(runner CodexInstallRunner) func() {
+	previous := runCodexInstall
+	runCodexInstall = runner
+	return func() { runCodexInstall = previous }
 }
 
 func SetOpenCodeInstallRunnerForTest(runner OpenCodeInstallRunner) func() {
@@ -199,6 +211,8 @@ func runService(svc *service.Service, address string, args []string) error {
 	cmd := cli.NewRootCommandWithAddressAndRunners(svc, address, Version, func() error {
 		return runMCPServer(svc)
 	}, claudeInstall, func(out, errOut io.Writer) error {
+		return runCodexInstall(out, errOut)
+	}, func(out, errOut io.Writer) error {
 		return runOpenCodeInstall(out, errOut)
 	}, func(version string, install cli.ClaudeInstallRunner, out, errOut io.Writer) error {
 		return cli.DefaultUpdateRunner(version, install, out, errOut)

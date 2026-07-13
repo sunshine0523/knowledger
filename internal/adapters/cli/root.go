@@ -17,10 +17,10 @@ func NewRootCommandWithAddress(svc *service.Service, address string) *cobra.Comm
 }
 
 func NewRootCommandWithAddressAndMCPRunner(svc *service.Service, address string, runMCP MCPRunner) *cobra.Command {
-	return NewRootCommandWithAddressAndRunners(svc, address, "dev", runMCP, func(out, errOut io.Writer) error { return nil }, func(out, errOut io.Writer) error { return nil }, nil)
+	return NewRootCommandWithAddressAndRunners(svc, address, "dev", runMCP, func(out, errOut io.Writer) error { return nil }, func(out, errOut io.Writer) error { return nil }, func(out, errOut io.Writer) error { return nil }, nil)
 }
 
-func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, version string, runMCP MCPRunner, runClaudeInstall ClaudeInstallRunner, runOpenCodeInstall OpenCodeInstallRunner, runUpdate UpdateRunner) *cobra.Command {
+func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, version string, runMCP MCPRunner, runClaudeInstall ClaudeInstallRunner, runCodexInstall CodexInstallRunner, runOpenCodeInstall OpenCodeInstallRunner, runUpdate UpdateRunner) *cobra.Command {
 	cmd := &cobra.Command{Use: "knowledger"}
 	cmd.PersistentFlags().StringVar(&scopeFlag, "scope", "", "knowledge base scope: project, global. Defaults to project when running in a project directory, else global.")
 	cmd.AddCommand(newVersionCommand(version))
@@ -36,7 +36,7 @@ func NewRootCommandWithAddressAndRunners(svc *service.Service, address string, v
 	cmd.AddCommand(newDeleteKBCommand(svc))
 	cmd.AddCommand(newServeCommand(svc, address))
 	cmd.AddCommand(newMCPCommand(runMCP))
-	cmd.AddCommand(newInstallCommand(runClaudeInstall, runOpenCodeInstall))
+	cmd.AddCommand(newInstallCommand(runClaudeInstall, runCodexInstall, runOpenCodeInstall))
 	cmd.AddCommand(newKBGitKnowledgeAddCommand(svc))
 	cmd.AddCommand(newKBGitKnowledgePullCommand(svc))
 	cmd.AddCommand(newKBGitKnowledgeListCommand(svc))

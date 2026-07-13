@@ -217,6 +217,23 @@ func TestRunDefaultInstallClaudeInvokesInstallRunner(t *testing.T) {
 	}
 }
 
+func TestRunDefaultInstallCodexInvokesInstallRunner(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	called := 0
+	restore := app.SetCodexInstallRunnerForTest(func(out, errOut io.Writer) error {
+		called++
+		return nil
+	})
+	defer restore()
+
+	if err := app.RunDefault([]string{"install", "--codex"}); err != nil {
+		t.Fatalf("RunDefault returned error: %v", err)
+	}
+	if called != 1 {
+		t.Fatalf("expected install runner to be called once, got %d", called)
+	}
+}
+
 func TestRunDefaultInstallOpenCodeInvokesInstallRunner(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	called := 0
@@ -261,6 +278,23 @@ func TestRunInstallClaudeDoesNotLoadConfig(t *testing.T) {
 	defer restore()
 
 	if err := app.Run("/path/that/does/not/exist.yaml", []string{"install", "--claude"}); err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if called != 1 {
+		t.Fatalf("expected install runner to be called once, got %d", called)
+	}
+}
+
+func TestRunInstallCodexDoesNotLoadConfig(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	called := 0
+	restore := app.SetCodexInstallRunnerForTest(func(out, errOut io.Writer) error {
+		called++
+		return nil
+	})
+	defer restore()
+
+	if err := app.Run("/path/that/does/not/exist.yaml", []string{"install", "--codex"}); err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
 	if called != 1 {

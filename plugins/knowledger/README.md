@@ -1,12 +1,12 @@
-# Claude Code Knowledger Plugin
+# Knowledger Plugin for Codex and Claude Code
 
-This plugin connects Claude Code to Knowledger through the existing `knowledger mcp` command and adds skill instructions for better retrieval and capture timing.
+This plugin connects Codex or Claude Code to Knowledger through the existing `knowledger mcp` command and adds skill instructions for better retrieval and capture timing.
 
 The plugin is intentionally thin. Knowledger's Go binary remains the source of truth for storage, indexing, search, and MCP tool behavior.
 
 ## What It Provides
 
-- A Claude Code plugin manifest at `.claude-plugin/plugin.json`.
+- Plugin manifests for Codex and Claude Code.
 - An MCP server configuration named `knowledger` that runs `knowledger mcp`.
 - A `knowledger` skill that tells Claude when to search saved knowledge and when to propose durable capture.
 
@@ -33,6 +33,24 @@ knowledger mcp
 ```
 
 ## Install Locally
+
+Install into Codex with the Knowledger CLI:
+
+```bash
+knowledger install --codex
+```
+
+Verify the installation, then start a new Codex thread:
+
+```bash
+codex plugin list
+```
+
+Install into Claude Code:
+
+```bash
+knowledger install --claude
+```
 
 From a checkout of this repository, load the plugin for a single Claude Code session:
 
@@ -109,7 +127,7 @@ Do not store secrets, credentials, private tokens, one-off task state, or inform
 
 ## Troubleshooting
 
-If Claude Code cannot start the MCP server, check:
+If Codex or Claude Code cannot start the MCP server, check:
 
 1. `command -v knowledger` prints an executable path.
 2. `knowledger mcp` starts without errors in the same shell.

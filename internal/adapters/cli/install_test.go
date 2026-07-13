@@ -19,6 +19,9 @@ func TestInstallClaudeCallsRunnerOnce(t *testing.T) {
 		}
 		return nil
 	}, func(out, errOut io.Writer) error {
+		t.Fatalf("codex runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
 		t.Fatalf("opencode runner should not be called")
 		return nil
 	})
@@ -32,10 +35,38 @@ func TestInstallClaudeCallsRunnerOnce(t *testing.T) {
 	}
 }
 
+func TestInstallCodexCallsRunnerOnce(t *testing.T) {
+	called := 0
+	cmd := newInstallCommand(func(out, errOut io.Writer) error {
+		t.Fatalf("claude runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
+		called++
+		if out == nil || errOut == nil {
+			t.Fatalf("expected stdout and stderr writers")
+		}
+		return nil
+	}, func(out, errOut io.Writer) error {
+		t.Fatalf("opencode runner should not be called")
+		return nil
+	})
+	cmd.SetArgs([]string{"--codex"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if called != 1 {
+		t.Fatalf("expected runner to be called once, got %d", called)
+	}
+}
+
 func TestInstallOpenCodeCallsRunnerOnce(t *testing.T) {
 	called := 0
 	cmd := newInstallCommand(func(out, errOut io.Writer) error {
 		t.Fatalf("claude runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
+		t.Fatalf("codex runner should not be called")
 		return nil
 	}, func(out, errOut io.Writer) error {
 		called++
@@ -64,6 +95,8 @@ func TestInstallWithBothFlagsCallsBothRunners(t *testing.T) {
 		claudeCalled++
 		return nil
 	}, func(out, errOut io.Writer) error {
+		return nil
+	}, func(out, errOut io.Writer) error {
 		opencodeCalled++
 		return nil
 	})
@@ -80,6 +113,9 @@ func TestInstallWithBothFlagsCallsBothRunners(t *testing.T) {
 func TestInstallWithoutTargetFails(t *testing.T) {
 	errBuf := new(bytes.Buffer)
 	cmd := newInstallCommand(func(out, errOut io.Writer) error {
+		t.Fatalf("runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
 		t.Fatalf("runner should not be called")
 		return nil
 	}, func(out, errOut io.Writer) error {
@@ -105,6 +141,9 @@ func TestInstallClaudeRejectsExtraArgs(t *testing.T) {
 	}, func(out, errOut io.Writer) error {
 		t.Fatalf("runner should not be called")
 		return nil
+	}, func(out, errOut io.Writer) error {
+		t.Fatalf("runner should not be called")
+		return nil
 	}, nil)
 	cmd.SetArgs([]string{"install", "--claude", "extra"})
 
@@ -119,6 +158,9 @@ func TestInstallClaudeRejectsExtraArgs(t *testing.T) {
 
 func TestInstallRejectsUnsupportedPublicFlags(t *testing.T) {
 	cmd := newInstallCommand(func(out, errOut io.Writer) error {
+		t.Fatalf("runner should not be called")
+		return nil
+	}, func(out, errOut io.Writer) error {
 		t.Fatalf("runner should not be called")
 		return nil
 	}, func(out, errOut io.Writer) error {
