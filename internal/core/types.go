@@ -5,6 +5,7 @@ import "time"
 type KnowledgeBase struct {
 	ID                string
 	Scope             string
+	Type              string
 	Name              string
 	StoreType         string
 	StoreConfig       map[string]any
@@ -13,6 +14,11 @@ type KnowledgeBase struct {
 	Indexing          map[string]any
 	Tags              []string
 }
+
+const (
+	KnowledgeBaseTypeKnowledge     = "knowledge"
+	KnowledgeBaseTypeSpecification = "specification"
+)
 
 type KnowledgeItem struct {
 	ID        string
@@ -54,26 +60,4 @@ type IndexStatus struct {
 	State         string
 	LastSuccessAt *time.Time
 	LastError     string
-}
-
-type Finding struct {
-	SpecID       string `json:"spec_id"`
-	RuleID       string `json:"rule_id,omitempty"`
-	Path         string `json:"path"`
-	Line         int    `json:"line,omitempty"`
-	Severity     string `json:"severity"`           // must-fix | should-fix | nit
-	Message      string `json:"message"`
-	SuggestedFix string `json:"suggested_fix,omitempty"`
-	RuleQuote    string `json:"rule_quote,omitempty"`
-}
-
-type RuleSet struct {
-	SpecID string          `json:"spec_id"`
-	Items  []KnowledgeItem `json:"items"`
-}
-
-type LintResult struct {
-	Findings []Finding `json:"findings"`
-	RuleSets []RuleSet `json:"rule_sets"`
-	Errors   []string  `json:"errors,omitempty"`
 }

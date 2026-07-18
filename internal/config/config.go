@@ -14,7 +14,6 @@ const (
 	DefaultServerAddress       = ":34125"
 	DefaultStoragePath         = "~/.knowledger/db"
 	DefaultRuntimeRegistryPath = "~/.knowledger/registry.json"
-	DefaultSpecRegistryPath    = "~/.knowledger/specs.json"
 	DefaultKBID                = "default"
 	DefaultKBName              = "Default"
 	DefaultChromaProvider      = "chroma"
@@ -28,31 +27,8 @@ const (
 type Config struct {
 	DefaultSearchMode   string                `yaml:"default_search_mode"`
 	RuntimeRegistryPath string                `yaml:"runtime_registry_path"`
-	SpecRegistryPath    string                `yaml:"spec_registry_path"`
 	Server              ServerConfig          `yaml:"server"`
 	KnowledgeBases      []KnowledgeBaseConfig `yaml:"knowledge_bases"`
-	Specifications      []SpecificationConfig `yaml:"specifications"`
-}
-
-type SpecificationConfig struct {
-	ID      string       `yaml:"id" json:"id"`
-	Name    string       `yaml:"name" json:"name,omitempty"`
-	Type    string       `yaml:"type" json:"type"`
-	Enabled bool         `yaml:"enabled" json:"enabled"`
-	Source  SourceConfig `yaml:"source" json:"source"`
-}
-
-type SourceConfig struct {
-	// kb type
-	KBID string   `yaml:"kb_id,omitempty" json:"kb_id,omitempty"`
-	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
-	// external type
-	Command    string `yaml:"command,omitempty" json:"command,omitempty"`
-	Parser     string `yaml:"parser,omitempty" json:"parser,omitempty"` // golangci-lint | checkstyle | eslint | generic-json
-	WorkingDir string `yaml:"working_dir,omitempty" json:"working_dir,omitempty"`
-	// script type
-	Script       string `yaml:"script,omitempty" json:"script,omitempty"`
-	OutputFormat string `yaml:"output_format,omitempty" json:"output_format,omitempty"` // json | text
 }
 
 type ServerConfig struct {
@@ -61,6 +37,7 @@ type ServerConfig struct {
 
 type KnowledgeBaseConfig struct {
 	ID                string         `yaml:"id"`
+	Type              string         `yaml:"type"`
 	Name              string         `yaml:"name"`
 	StoreType         string         `yaml:"store_type"`
 	StoreConfig       map[string]any `yaml:"store_config"`
@@ -112,14 +89,6 @@ func ApplyDefaults(cfg *Config) error {
 		return err
 	}
 	cfg.RuntimeRegistryPath = runtimeRegistryPath
-	if cfg.SpecRegistryPath == "" {
-		cfg.SpecRegistryPath = DefaultSpecRegistryPath
-	}
-	specRegistryPath, err := expandHomePath(cfg.SpecRegistryPath)
-	if err != nil {
-		return err
-	}
-	cfg.SpecRegistryPath = specRegistryPath
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = DefaultServerAddress
 	}
@@ -142,6 +111,11 @@ func ApplyDefaults(cfg *Config) error {
 }
 
 func ApplyKnowledgeBaseDefaults(kb *KnowledgeBaseConfig) error {
+	typeName, err := NormalizeKnowledgeBaseType(kb.Type)
+	if err != nil {
+		return fmt.Errorf("knowledge base %q: %w", kb.ID, err)
+	}
+	kb.Type = typeName
 	switch kb.StoreType {
 	case "sqlite":
 		if err := applySQLiteStoreDefaults(kb); err != nil {
@@ -153,6 +127,17 @@ func ApplyKnowledgeBaseDefaults(kb *KnowledgeBaseConfig) error {
 		return nil
 	}
 	return applySemanticIndexingDefaults(kb)
+}
+
+func NormalizeKnowledgeBaseType(value string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "knowledge":
+		return "knowledge", nil
+	case "specification":
+		return "specification", nil
+	default:
+		return "", fmt.Errorf("type must be knowledge or specification")
+	}
 }
 
 func applySQLiteStoreDefaults(kb *KnowledgeBaseConfig) error {
@@ -256,6 +241,7 @@ func defaultKnowledgeBase() (KnowledgeBaseConfig, error) {
 	}
 	kb := KnowledgeBaseConfig{
 		ID:          DefaultKBID,
+		Type:        "knowledge",
 		Name:        DefaultKBName,
 		StoreType:   "sqlite",
 		Enabled:     true,

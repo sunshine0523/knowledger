@@ -25,7 +25,8 @@ triggers:
 **Trigger**: User provides a git URL + intent to pull/clone/add it as a KB.
 
 **Steps**:
-1. Call `git_knowledge_add` with the URL (and optional `id`, `name`, `scope`).
+1. Call `git_knowledge_add` with the URL (and optional `id`, `name`, `scope`,
+   `type`). Pass `type: specification` for a repository of rules or conventions.
 2. Call `index_knowledge` with the returned KB's `id` and `scope` to index it.
 3. Report success: KB cloned and indexed.
 

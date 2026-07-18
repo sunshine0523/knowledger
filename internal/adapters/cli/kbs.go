@@ -48,8 +48,8 @@ func newListKBsCommand(svc *service.Service) *cobra.Command {
 				}
 
 				// Print KB header
-				fmt.Fprintf(cmd.OutOrStdout(), "=== [%s:%s] %s (store=%s) ===\n",
-					scope, kb.ID, name, kb.StoreType)
+				fmt.Fprintf(cmd.OutOrStdout(), "=== [%s:%s] %s (type=%s, store=%s) ===\n",
+					scope, kb.ID, name, kb.Type, kb.StoreType)
 
 				// Get and print items
 				items, err := svc.ListKnowledgeItems(context.Background(), kb.Scope, kb.ID)

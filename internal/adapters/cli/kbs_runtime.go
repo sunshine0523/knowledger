@@ -11,6 +11,7 @@ import (
 func newCreateKBCommand(svc *service.Service) *cobra.Command {
 	var (
 		id              string
+		kbType          string
 		name            string
 		storeType       string
 		path            string
@@ -29,6 +30,7 @@ func newCreateKBCommand(svc *service.Service) *cobra.Command {
 			input := service.CreateKnowledgeBaseInput{
 				Scope:     scope,
 				ID:        id,
+				Type:      kbType,
 				Name:      name,
 				StoreType: storeType,
 				Path:      path,
@@ -48,6 +50,7 @@ func newCreateKBCommand(svc *service.Service) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&id, "id", "", "knowledge base id")
+	cmd.Flags().StringVar(&kbType, "type", "knowledge", "knowledge base type: knowledge, specification")
 	cmd.Flags().StringVar(&name, "name", "", "human-readable name (defaults to id)")
 	cmd.Flags().StringVar(&storeType, "store-type", "", "backend store type: text, sqlite")
 	cmd.Flags().StringVar(&path, "path", "", "storage path (required for global scope)")

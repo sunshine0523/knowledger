@@ -382,6 +382,7 @@ function setupCreateKBForm(form) {
     const payload = {
       id: data.get("id") || "",
       name: data.get("name") || "",
+      type: data.get("type") || "knowledge",
       store_type: data.get("store_type") || "",
       path: data.get("path") || "",
       enabled: data.get("enabled") === "on",
@@ -458,6 +459,7 @@ function renderKBs(rows) {
     appendTextCell(row, kb.id, true);
     appendTextCell(row, kb.name, false);
     appendScopeCell(row, kb.scope);
+    appendTextCell(row, kb.type, false);
     appendTextCell(row, kb.store_type, false);
     appendTextCell(row, kb.path, true);
     appendTextCell(row, formatBoolean(kb.enabled), false);
@@ -558,6 +560,7 @@ function renderDashboardKnowledgeBases(rows) {
     appendTextCell(row, kb.id, true);
     appendTextCell(row, kb.name, false);
     appendScopeCell(row, kb.scope);
+    appendTextCell(row, kb.type, false);
     appendTextCell(row, kb.store_type, false);
     appendTextCell(row, kb.path, true);
     appendTextCell(row, formatBoolean(kb.enabled), false);

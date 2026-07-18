@@ -79,6 +79,7 @@ func staticToCore(item config.KnowledgeBaseConfig) core.KnowledgeBase {
 	return core.KnowledgeBase{
 		ID:                item.ID,
 		Scope:             core.ScopeGlobal,
+		Type:              knowledgeBaseType(item.Type),
 		Name:              item.Name,
 		StoreType:         item.StoreType,
 		StoreConfig:       item.StoreConfig,
@@ -93,6 +94,7 @@ func runtimeToCore(item RuntimeKnowledgeBase, scope string) core.KnowledgeBase {
 	return core.KnowledgeBase{
 		ID:                item.ID,
 		Scope:             scope,
+		Type:              knowledgeBaseType(item.Type),
 		Name:              item.Name,
 		StoreType:         item.StoreType,
 		StoreConfig:       item.StoreConfig,
@@ -101,6 +103,13 @@ func runtimeToCore(item RuntimeKnowledgeBase, scope string) core.KnowledgeBase {
 		Indexing:          item.Indexing,
 		Tags:              item.Tags,
 	}
+}
+
+func knowledgeBaseType(value string) string {
+	if value == "" {
+		return core.KnowledgeBaseTypeKnowledge
+	}
+	return value
 }
 
 func (r *Registry) List() ([]core.KnowledgeBase, error) {
@@ -184,6 +193,11 @@ func (r *Registry) Create(scope string, item RuntimeKnowledgeBase) error {
 	if item.ID == "" {
 		return fmt.Errorf("knowledge base id is required")
 	}
+	typeName, err := config.NormalizeKnowledgeBaseType(item.Type)
+	if err != nil {
+		return err
+	}
+	item.Type = typeName
 	store, err := r.storeForScope(scope)
 	if err != nil {
 		return err
@@ -328,6 +342,7 @@ func applyProjectDefaults(item *RuntimeKnowledgeBase, projectRoot string) error 
 	// would home-expand or otherwise overwrite them).
 	cfg := config.KnowledgeBaseConfig{
 		ID:          item.ID,
+		Type:        item.Type,
 		StoreType:   item.StoreType,
 		StoreConfig: item.StoreConfig,
 		Indexing:    item.Indexing,

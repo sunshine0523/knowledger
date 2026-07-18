@@ -29,7 +29,7 @@ func (s *Server) registerTools() {
 	)
 	searchTool := mcpgo.NewTool(
 		"search_knowledge",
-		mcpgo.WithDescription("按语义/词法/混合模式检索知识条目（Q&A、项目决策、调试配方、参考资料）。返回带 snippet 的命中结果；用 get_knowledge_item 拉完整正文。不要用此工具检索可执行规范/约定——规范必须通过 list_spec_rules 全量加载，相关性检索会漏掉适用的规则。"),
+		mcpgo.WithDescription("按语义/词法/混合模式检索 knowledge 类型知识库中的条目（Q&A、项目决策、调试配方、参考资料）。返回带 snippet 的命中结果；用 get_knowledge_item 拉完整正文。规范库通过 list_knowledge_bases 识别，并用 list_knowledge_items 全量读取。"),
 		mcpgo.WithString("query", mcpgo.Required(), mcpgo.Description("搜索查询词。")),
 		mcpgo.WithArray(
 			"kb_ids",
@@ -105,6 +105,7 @@ func (s *Server) registerTools() {
 		mcpgo.WithDescription("Create a new knowledge base. Path is required for global scope; for project scope a relative path is resolved against the project root."),
 		scopeProperty,
 		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Knowledge base ID (letters, digits, underscore, dash, dot; max 64 chars).")),
+		mcpgo.WithString("type", mcpgo.Description("Knowledge base type. Defaults to knowledge."), mcpgo.Enum("knowledge", "specification")),
 		mcpgo.WithString("name", mcpgo.Description("Human-readable name. Defaults to id.")),
 		mcpgo.WithString("store_type", mcpgo.Required(), mcpgo.Description("Backend store type."), mcpgo.Enum("text", "sqlite")),
 		mcpgo.WithString("path", mcpgo.Description("Storage path. Required for global scope; relative paths for project scope are resolved against the project root.")),
@@ -145,6 +146,7 @@ func (s *Server) registerTools() {
 		mcpgo.WithString("url", mcpgo.Required(), mcpgo.Description("Git repository URL to clone.")),
 		mcpgo.WithString("id", mcpgo.Description("Knowledge base ID (derived from repository name if omitted).")),
 		mcpgo.WithString("name", mcpgo.Description("Human-readable name (defaults to id).")),
+		mcpgo.WithString("type", mcpgo.Description("Knowledge base type. Defaults to knowledge."), mcpgo.Enum("knowledge", "specification")),
 		mcpgo.WithReadOnlyHintAnnotation(false),
 		mcpgo.WithDestructiveHintAnnotation(false),
 		mcpgo.WithIdempotentHintAnnotation(false),
@@ -169,38 +171,7 @@ func (s *Server) registerTools() {
 		mcpgo.WithOpenWorldHintAnnotation(false),
 	)
 
-	specGitAddTool := mcpgo.NewTool(
-		"spec_git_add",
-		mcpgo.WithDescription("Clone a git repository as a kb-type specification (rule set). Stores to ~/.knowledger/git-spec/<id>/ (global) or <project>/.knowledger/git-spec/<id>/ (project), registers a text knowledge base at that path, and creates a kb-type spec pointing at it. After cloning, call index_knowledge to index the KB."),
-		scopeProperty,
-		mcpgo.WithString("url", mcpgo.Required(), mcpgo.Description("Git repository URL to clone.")),
-		mcpgo.WithString("id", mcpgo.Description("Specification ID (derived from repository name if omitted).")),
-		mcpgo.WithString("name", mcpgo.Description("Human-readable name (defaults to id).")),
-		mcpgo.WithArray("tags", mcpgo.Description("Optional tag filter narrowing which KB items participate as rules."), mcpgo.WithStringItems()),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(false),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	specGitPullTool := mcpgo.NewTool(
-		"spec_git_pull",
-		mcpgo.WithDescription("Pull latest changes for a spec-git specification. After pulling, call index_knowledge to reindex the backing KB."),
-		scopeProperty,
-		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Specification ID.")),
-		mcpgo.WithReadOnlyHintAnnotation(false),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	specGitListTool := mcpgo.NewTool(
-		"spec_git_list",
-		mcpgo.WithDescription("List all spec-git specifications from global (~/.knowledger/git-spec/) and project (.knowledger/git-spec/) directories. Only returns directories that are still registered as knowledge bases."),
-		mcpgo.WithReadOnlyHintAnnotation(true),
-		mcpgo.WithDestructiveHintAnnotation(false),
-		mcpgo.WithIdempotentHintAnnotation(true),
-		mcpgo.WithOpenWorldHintAnnotation(false),
-	)
-	s.tools = []mcpgo.Tool{searchTool, getTool, listItemsTool, addTool, deleteTool, listTool, createKBTool, deleteKBTool, indexTool, gitKnowledgeAddTool, gitKnowledgePullTool, gitKnowledgeListTool, specGitAddTool, specGitPullTool, specGitListTool}
+	s.tools = []mcpgo.Tool{searchTool, getTool, listItemsTool, addTool, deleteTool, listTool, createKBTool, deleteKBTool, indexTool, gitKnowledgeAddTool, gitKnowledgePullTool, gitKnowledgeListTool}
 	s.server.AddTool(searchTool, s.handleSearchKnowledge)
 	s.server.AddTool(getTool, s.handleGetKnowledgeItem)
 	s.server.AddTool(listItemsTool, s.handleListKnowledgeItems)
@@ -213,8 +184,4 @@ func (s *Server) registerTools() {
 	s.server.AddTool(gitKnowledgeAddTool, s.handleGitKnowledgeAdd)
 	s.server.AddTool(gitKnowledgePullTool, s.handleGitKnowledgePull)
 	s.server.AddTool(gitKnowledgeListTool, s.handleGitKnowledgeList)
-	s.server.AddTool(specGitAddTool, s.handleSpecGitAdd)
-	s.server.AddTool(specGitPullTool, s.handleSpecGitPull)
-	s.server.AddTool(specGitListTool, s.handleSpecGitList)
-	s.registerSpecTools()
 }

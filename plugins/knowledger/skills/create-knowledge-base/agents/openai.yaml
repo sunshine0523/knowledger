@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Knowledge Bases"
+  short_description: "Create scoped knowledge bases and specifications"
+  default_prompt: "Create a knowledge base or specification with the correct scope and indexing defaults."

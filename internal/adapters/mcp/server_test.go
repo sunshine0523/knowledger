@@ -60,9 +60,6 @@ func TestNewServerRegistersKnowledgeToolsInOrder(t *testing.T) {
 		"get_knowledge_item", "list_knowledge_items", "add_knowledge_item", "delete_knowledge_item",
 		"list_knowledge_bases", "create_knowledge_base", "delete_knowledge_base", "index_knowledge",
 		"git_knowledge_add", "git_knowledge_pull", "git_knowledge_list",
-		"spec_git_add", "spec_git_pull", "spec_git_list",
-		"list_spec_rules",
-		"list_specifications", "run_lint", "add_specification", "delete_specification", "add_rule_to_spec",
 	}
 	if len(tools) != len(want) {
 		t.Fatalf("expected %d tools, got %d", len(want), len(tools))
@@ -96,18 +93,6 @@ func TestSearchKnowledgeSchema(t *testing.T) {
 	for _, required := range tool.InputSchema.Required {
 		if required != "query" {
 			t.Fatalf("only query should be required on search_knowledge, got %q", required)
-		}
-	}
-}
-
-func TestListSpecRulesSchema(t *testing.T) {
-	tool := findTool(t, mcpadapter.NewServer(nil).Tools(), "list_spec_rules")
-	if _, ok := tool.InputSchema.Properties["scope"]; !ok {
-		t.Fatal("expected list_spec_rules to expose scope property")
-	}
-	for _, required := range tool.InputSchema.Required {
-		if required == "scope" {
-			t.Fatal("scope must be optional on list_spec_rules")
 		}
 	}
 }
@@ -167,7 +152,7 @@ func TestCreateKnowledgeBaseSchema(t *testing.T) {
 			t.Fatalf("expected create_knowledge_base to require %q", required)
 		}
 	}
-	for _, prop := range []string{"scope", "name", "path", "enabled", "semantic_enabled", "tags"} {
+	for _, prop := range []string{"scope", "type", "name", "path", "enabled", "semantic_enabled", "tags"} {
 		if _, ok := tool.InputSchema.Properties[prop]; !ok {
 			t.Fatalf("expected create_knowledge_base schema to have %q property", prop)
 		}
@@ -349,7 +334,7 @@ func TestMCPIndexKnowledgeHandler(t *testing.T) {
 	}
 }
 
-func TestListSpecRulesKBOnly(t *testing.T) {
+func TestSpecificationKnowledgeBaseUsesSharedTools(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -357,6 +342,7 @@ func TestListSpecRulesKBOnly(t *testing.T) {
 	svc := service.New(
 		[]core.KnowledgeBase{{
 			ID: "rules-kb", Name: "Rules", StoreType: "text",
+			Type:        core.KnowledgeBaseTypeSpecification,
 			StoreConfig: map[string]any{"path": dir}, Enabled: true,
 		}},
 		map[string]core.StoreBackend{"text": text.New()},
@@ -385,38 +371,15 @@ func TestListSpecRulesKBOnly(t *testing.T) {
 		t.Fatalf("init: %v", err)
 	}
 
-	addReq := mcp.CallToolRequest{}
-	addReq.Params.Name = "add_specification"
-	addReq.Params.Arguments = map[string]any{
-		"id": "go-rules", "type": "kb", "name": "Go Rules",
-		"kb_id": "rules-kb", "scope": "global",
-	}
-	addRes, err := client.CallTool(ctx, addReq)
-	if err != nil || addRes.IsError {
-		t.Fatalf("add_specification failed: err=%v isError=%v", err, addRes.IsError)
-	}
-
 	req := mcp.CallToolRequest{}
-	req.Params.Name = "list_spec_rules"
-	req.Params.Arguments = map[string]any{}
+	req.Params.Name = "list_knowledge_items"
+	req.Params.Arguments = map[string]any{"kb_id": "rules-kb", "scope": "global"}
 	res, err := client.CallTool(ctx, req)
 	if err != nil || res.IsError {
-		t.Fatalf("list_spec_rules failed: err=%v isError=%v", err, res.IsError)
+		t.Fatalf("list_knowledge_items failed: err=%v isError=%v", err, res.IsError)
 	}
-
-	raw := firstTextContent(t, res.Content)
-	var result struct {
-		Specifications []map[string]any `json:"specifications"`
-		RuleSets       []map[string]any `json:"rule_sets"`
-	}
-	if err := json.Unmarshal([]byte(raw), &result); err != nil {
-		t.Fatalf("unmarshal: %v (raw=%s)", err, raw)
-	}
-	if len(result.RuleSets) != 1 {
-		t.Fatalf("expected 1 rule_set, got %d", len(result.RuleSets))
-	}
-	if result.RuleSets[0]["spec_id"] != "go-rules" {
-		t.Fatalf("wrong spec_id: %v", result.RuleSets[0]["spec_id"])
+	if !strings.Contains(firstTextContent(t, res.Content), "must use errors.As") {
+		t.Fatalf("expected specification item in shared listing, got %q", firstTextContent(t, res.Content))
 	}
 }
 

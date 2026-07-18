@@ -19,11 +19,6 @@ import (
 	"github.com/kindbrave/claude-knowledger/internal/projectroot"
 	"github.com/kindbrave/claude-knowledger/internal/registry"
 	"github.com/kindbrave/claude-knowledger/internal/service"
-	"github.com/kindbrave/claude-knowledger/internal/spec"
-	extprovider "github.com/kindbrave/claude-knowledger/internal/spec/external"
-	kbprovider "github.com/kindbrave/claude-knowledger/internal/spec/kb"
-	scriptprovider "github.com/kindbrave/claude-knowledger/internal/spec/script"
-	"github.com/kindbrave/claude-knowledger/internal/specregistry"
 )
 
 // Version is set at build time via -ldflags "-X github.com/kindbrave/claude-knowledger/internal/app.Version=..."
@@ -144,47 +139,7 @@ func BuildServiceFromConfig(cfg config.Config, projectRoot string) (*service.Ser
 	if err != nil {
 		return nil, err
 	}
-	globalSpecStore := specregistry.NewFileStore(cfg.SpecRegistryPath)
-	var projectSpecStore specregistry.Store
-	if projectRoot != "" {
-		projectSpecStore = specregistry.NewFileStore(filepath.Join(projectRoot, projectroot.MarkerDirName, "specs.json"))
-	}
-	specReg := specregistry.New(cfg.Specifications, globalSpecStore, projectSpecStore, projectRoot)
-	svc.SetSpecRegistry(specReg)
-	scope := core.ScopeGlobal
-	if projectRoot != "" {
-		scope = core.ScopeProject
-	}
-	svc.SetSpecEngineBuilder(func(specs []config.SpecificationConfig) service.SpecEngine {
-		return buildSpecEngine(specs, svc, scope)
-	})
-	mergedSpecs, err := specReg.List()
-	if err != nil {
-		return nil, err
-	}
-	if len(mergedSpecs) > 0 {
-		svc.SetSpecs(mergedSpecs)
-		svc.SetSpecEngine(buildSpecEngine(mergedSpecs, svc, scope))
-	}
 	return svc, nil
-}
-
-func buildSpecEngine(specs []config.SpecificationConfig, svc *service.Service, scope string) *spec.Engine {
-	engine := spec.NewEngine(specs)
-	for _, s := range specs {
-		if !s.Enabled {
-			continue
-		}
-		switch s.Type {
-		case "kb":
-			engine.RegisterProvider(s.ID, kbprovider.New(svc, s.Source, scope))
-		case "external":
-			engine.RegisterProvider(s.ID, extprovider.New(s.Source))
-		case "script":
-			engine.RegisterProvider(s.ID, scriptprovider.New(s.Source))
-		}
-	}
-	return engine
 }
 
 func buildBackends(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) {

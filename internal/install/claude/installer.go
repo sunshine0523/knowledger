@@ -31,6 +31,7 @@ var bundleFiles = []string{
 	"skills/git-knowledge/SKILL.md",
 	"skills/update-knowledger/SKILL.md",
 	"skills/kb-code-review/SKILL.md",
+	"skills/create-knowledge-base/SKILL.md",
 	"hooks/hooks.json",
 	"hooks/precheck",
 	"hooks/git-sync",

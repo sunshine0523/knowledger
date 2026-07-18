@@ -26,7 +26,7 @@ Steps:
 2. Use query keywords such as: \"coding standards\", \"code review checklist\", \"best practices\", etc.
 3. Conduct a comprehensive code review based on the retrieved knowledge
 
-This ensures the review is based on the project's established standards and specifications.
+This ensures the review is based on the project's established standards and specification knowledge bases.
 </IMPORTANT_CODE_REVIEW_PREREQUISITE>"
 
 context_escaped=$(escape_for_json "$context")

@@ -7,6 +7,7 @@ import (
 
 type RuntimeKnowledgeBase struct {
 	ID                string         `json:"id"`
+	Type              string         `json:"type"`
 	Name              string         `json:"name"`
 	StoreType         string         `json:"store_type"`
 	StoreConfig       map[string]any `json:"store_config"`

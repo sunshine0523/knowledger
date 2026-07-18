@@ -22,25 +22,21 @@ const serverVersion = "0.1.0"
 // because the model reads it every turn without having to scan tool
 // metadata. Keep it sharp, behavioral, and bilingual where the user base
 // asks questions in mixed languages.
-const serverInstructions = `# Knowledger — rules + knowledge, runs BEFORE answering
+const serverInstructions = `# Knowledger — typed knowledge bases, runs BEFORE answering
 
-Knowledger exposes two orthogonal channels through MCP:
+Every collection is a knowledge base with type ` + "`knowledge`" + ` or
+` + "`specification`" + `. Both use the same knowledge-base and item tools.
 
-- **Specs (rules)** — enforceable conventions loaded IN FULL via
-  ` + "`list_spec_rules`" + `. Every rule applies; there is no relevance filter.
-- **Knowledge (KBs)** — retrieved by relevance via ` + "`search_knowledge`" + `
-  + ` + "`get_knowledge_item`" + `. For Q&A, decisions, debugging recipes, references.
-
-## Two channels — rules vs knowledge
+## Rules and knowledge
 
 BEFORE answering, writing code, designing, or making any technical recommendation:
 
-1. Call ` + "`list_spec_rules`" + ` — load every rule into context. Non-optional for
-   any coding/design/convention-touching task.
-2. Call ` + "`search_knowledge`" + ` (one or more queries) — retrieve relevant knowledge items.
-3. Fetch full bodies via ` + "`get_knowledge_item`" + ` for hits that look applicable.
-
-The two channels are orthogonal — one pass on each covers most tasks.
+1. Call ` + "`list_knowledge_bases`" + ` and identify every enabled
+   ` + "`specification`" + ` knowledge base.
+2. Call ` + "`list_knowledge_items`" + ` for each specification KB and fetch every full body
+   with ` + "`get_knowledge_item`" + `. Every specification applies; do not relevance-filter them.
+3. Call ` + "`search_knowledge`" + ` for relevant items from ` + "`knowledge`" + ` KBs and
+   fetch applicable full bodies with ` + "`get_knowledge_item`" + `.
 
 ## Capture — only on explicit user intent
 
@@ -114,6 +110,7 @@ type deleteKnowledgeItemInput struct {
 type createKnowledgeBaseInput struct {
 	Scope           string   `json:"scope,omitempty"`
 	ID              string   `json:"id"`
+	Type            string   `json:"type,omitempty"`
 	Name            string   `json:"name,omitempty"`
 	StoreType       string   `json:"store_type"`
 	Path            string   `json:"path,omitempty"`
@@ -316,7 +313,7 @@ func writeKnowledgeBaseHeader(b *strings.Builder, kb core.KnowledgeBase) {
 	if name == "" {
 		name = kb.ID
 	}
-	fmt.Fprintf(b, "=== [%s:%s] %s (store=%s) ===\n", scope, kb.ID, name, kb.StoreType)
+	fmt.Fprintf(b, "=== [%s:%s] %s (type=%s, store=%s) ===\n", scope, kb.ID, name, kb.Type, kb.StoreType)
 }
 
 func writeKnowledgeBaseItems(ctx context.Context, b *strings.Builder, svc *service.Service, kb core.KnowledgeBase) {
@@ -361,6 +358,7 @@ func (s *Server) handleCreateKnowledgeBase(ctx context.Context, request mcpgo.Ca
 	record, err := s.svc.CreateKnowledgeBase(ctx, service.CreateKnowledgeBaseInput{
 		Scope:           scope,
 		ID:              strings.TrimSpace(input.ID),
+		Type:            strings.TrimSpace(input.Type),
 		Name:            strings.TrimSpace(input.Name),
 		StoreType:       strings.TrimSpace(input.StoreType),
 		Path:            input.Path,

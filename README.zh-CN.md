@@ -146,6 +146,7 @@ server:
 knowledge_bases:
   - id: default
     name: Default
+    type: knowledge
     store_type: sqlite
     enabled: true
     store_config:
@@ -169,6 +170,7 @@ knowledge_bases:
 knowledge_bases:
   - id: docs
     name: Docs
+    type: knowledge
     store_type: text
     enabled: true
     store_config:
@@ -176,6 +178,9 @@ knowledge_bases:
 ```
 
 文本知识库会读取和写入 `.md` / `.txt` 文件。
+
+规则和约定也使用知识库模型，将 `type` 设置为 `specification`；它们与
+普通 `knowledge` 知识库共享 registry、条目以及 MCP/CLI 工具。
 
 ## 搜索模式
 

@@ -49,6 +49,7 @@ type apiError struct {
 type kbView struct {
 	ID                string   `json:"id"`
 	Scope             string   `json:"scope"`
+	Type              string   `json:"type"`
 	Name              string   `json:"name"`
 	StoreType         string   `json:"store_type"`
 	Path              string   `json:"path"`
@@ -82,6 +83,7 @@ type kbsPageData struct {
 type createKBRequest struct {
 	ID              string   `json:"id"`
 	Scope           string   `json:"scope"`
+	Type            string   `json:"type"`
 	Name            string   `json:"name"`
 	StoreType       string   `json:"store_type"`
 	Path            string   `json:"path"`
@@ -244,6 +246,7 @@ func (s *Server) apiCreateKB(w http.ResponseWriter, r *http.Request) {
 	record, err := s.svc.CreateKnowledgeBase(r.Context(), service.CreateKnowledgeBaseInput{
 		Scope:           scope,
 		ID:              req.ID,
+		Type:            req.Type,
 		Name:            req.Name,
 		StoreType:       req.StoreType,
 		Path:            req.Path,
@@ -483,6 +486,7 @@ func recordToView(record registry.KnowledgeBaseRecord) kbView {
 	return kbView{
 		ID:                kb.ID,
 		Scope:             kb.Scope,
+		Type:              kb.Type,
 		Name:              kb.Name,
 		StoreType:         kb.StoreType,
 		Path:              path,

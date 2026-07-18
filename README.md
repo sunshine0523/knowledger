@@ -145,6 +145,7 @@ server:
 knowledge_bases:
   - id: default
     name: Default
+    type: knowledge
     store_type: sqlite
     enabled: true
     store_config:
@@ -168,6 +169,7 @@ Text knowledge base config:
 knowledge_bases:
   - id: docs
     name: Docs
+    type: knowledge
     store_type: text
     enabled: true
     store_config:
@@ -175,6 +177,9 @@ knowledge_bases:
 ```
 
 Text knowledge bases read and write `.md` and `.txt` files.
+
+Rules and conventions use the same knowledge-base model. Set `type: specification`
+to share the registry, items, and MCP/CLI tools with regular `knowledge` bases.
 
 ## Search Modes
 

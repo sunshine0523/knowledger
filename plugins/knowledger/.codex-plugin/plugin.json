@@ -13,7 +13,7 @@
   "interface": {
     "displayName": "Knowledger",
     "shortDescription": "Search and capture durable local knowledge.",
-    "longDescription": "Connect Codex to local Knowledger knowledge bases for retrieval, capture, Git-backed knowledge, specifications, and convention review.",
+    "longDescription": "Connect Codex to local Knowledger knowledge bases for retrieval, capture, Git-backed knowledge, specification knowledge, and convention review.",
     "developerName": "KindBrave",
     "category": "Productivity",
     "capabilities": ["Knowledge retrieval", "Knowledge capture", "Code review"],

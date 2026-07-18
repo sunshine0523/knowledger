@@ -22,6 +22,12 @@
         <form id="kb-create-form" class="kb-form">
           <label><span data-i18n="common.id">ID</span><input name="id" required pattern="[A-Za-z0-9_.-]+" maxlength="64" placeholder="docs"></label>
           <label><span data-i18n="common.name">Name</span><input name="name" placeholder="Docs"></label>
+          <label><span data-i18n="common.type">Type</span>
+            <select name="type">
+              <option value="knowledge">knowledge</option>
+              <option value="specification">specification</option>
+            </select>
+          </label>
           <label><span data-i18n="kbs.backend">Backend</span>
             <select name="store_type" required>
               <option value="text">text</option>
@@ -58,6 +64,7 @@
                 <th data-i18n="common.name">Name</th>
                 <th data-i18n="common.scope">Scope</th>
                 <th data-i18n="common.type">Type</th>
+                <th data-i18n="kbs.backend">Backend</th>
                 <th data-i18n="common.path">Path</th>
                 <th data-i18n="common.enabled">Enabled</th>
                 <th data-i18n="common.source">Source</th>
@@ -72,6 +79,7 @@
                 <td><code>{{ .ID }}</code></td>
                 <td>{{ .Name }}</td>
                 <td><span class="scope-badge scope-{{ .Scope }}">{{ .Scope }}</span></td>
+                <td>{{ .Type }}</td>
                 <td>{{ .StoreType }}</td>
                 <td><code>{{ .Path }}</code></td>
                 <td>{{ .Enabled }}</td>

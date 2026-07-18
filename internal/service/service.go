@@ -14,18 +14,7 @@ import (
 	"github.com/kindbrave/claude-knowledger/internal/config"
 	"github.com/kindbrave/claude-knowledger/internal/core"
 	"github.com/kindbrave/claude-knowledger/internal/registry"
-	"github.com/kindbrave/claude-knowledger/internal/specregistry"
 )
-
-// SpecEngine is satisfied by spec.Engine; kept as an interface to avoid an
-// import cycle between service and the spec sub-packages.
-type SpecEngine interface {
-	Run(ctx context.Context, changedFiles []string, specIDs []string) core.LintResult
-}
-
-// SpecEngineBuilder rebuilds the spec engine from a spec list. Set via
-// SetSpecEngineBuilder so the service can rebuild the engine after add/delete.
-type SpecEngineBuilder func(specs []config.SpecificationConfig) SpecEngine
 
 type SearchResult struct {
 	Hits     []core.SearchHit
@@ -61,6 +50,7 @@ type BackendBuilder func([]core.KnowledgeBase) (map[string]core.StoreBackend, er
 type CreateKnowledgeBaseInput struct {
 	Scope           string
 	ID              string
+	Type            string
 	Name            string
 	StoreType       string
 	Path            string
@@ -70,17 +60,13 @@ type CreateKnowledgeBaseInput struct {
 }
 
 type Service struct {
-	mu                sync.RWMutex
-	knowledgeBases    []core.KnowledgeBase
-	backends          map[string]core.StoreBackend
-	registry          *registry.Registry
-	specRegistry      *specregistry.Registry
-	buildBackends     BackendBuilder
-	refreshMu         sync.Mutex
-	lastSignature     string
-	specEngine        SpecEngine
-	specs             []config.SpecificationConfig
-	specEngineBuilder SpecEngineBuilder
+	mu             sync.RWMutex
+	knowledgeBases []core.KnowledgeBase
+	backends       map[string]core.StoreBackend
+	registry       *registry.Registry
+	buildBackends  BackendBuilder
+	refreshMu      sync.Mutex
+	lastSignature  string
 }
 
 var knowledgeBaseIDPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
@@ -444,135 +430,6 @@ func (s *Service) Close() error {
 	return closeBackends(backends)
 }
 
-func (s *Service) SetSpecEngine(e SpecEngine) {
-	s.mu.Lock()
-	s.specEngine = e
-	s.mu.Unlock()
-}
-
-func (s *Service) SetSpecs(specs []config.SpecificationConfig) {
-	s.mu.Lock()
-	s.specs = append([]config.SpecificationConfig(nil), specs...)
-	s.mu.Unlock()
-}
-
-func (s *Service) SetSpecEngineBuilder(b SpecEngineBuilder) {
-	s.mu.Lock()
-	s.specEngineBuilder = b
-	s.mu.Unlock()
-}
-
-// SetSpecRegistry installs the persistent spec registry. When set,
-// AddSpecification / DeleteSpecification route through it and the
-// in-memory spec list is refreshed from the merged view on every
-// mutation. Callers must also seed the initial in-memory list via
-// SetSpecs after this is wired.
-func (s *Service) SetSpecRegistry(reg *specregistry.Registry) {
-	s.mu.Lock()
-	s.specRegistry = reg
-	s.mu.Unlock()
-}
-
-func (s *Service) AddSpecification(scope string, spec config.SpecificationConfig) error {
-	if s.specRegistry != nil {
-		normalized, err := core.NormalizeScope(scope)
-		if err != nil {
-			return err
-		}
-		if err := s.specRegistry.Create(normalized, spec); err != nil {
-			return err
-		}
-		return s.reloadSpecs()
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, existing := range s.specs {
-		if existing.ID == spec.ID {
-			return fmt.Errorf("specification %q already exists", spec.ID)
-		}
-	}
-	s.specs = append(s.specs, spec)
-	if s.specEngineBuilder != nil {
-		s.specEngine = s.specEngineBuilder(s.specs)
-	}
-	return nil
-}
-
-func (s *Service) DeleteSpecification(scope, specID string) error {
-	if s.specRegistry != nil {
-		normalized, err := core.NormalizeScope(scope)
-		if err != nil {
-			return err
-		}
-		if err := s.specRegistry.Delete(normalized, specID); err != nil {
-			return err
-		}
-		return s.reloadSpecs()
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i, existing := range s.specs {
-		if existing.ID == specID {
-			s.specs = append(s.specs[:i], s.specs[i+1:]...)
-			if s.specEngineBuilder != nil {
-				s.specEngine = s.specEngineBuilder(s.specs)
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("specification %q not found", specID)
-}
-
-func (s *Service) ListSpecifications() []config.SpecificationConfig {
-	if s.specRegistry != nil {
-		if merged, err := s.specRegistry.List(); err == nil {
-			s.mu.Lock()
-			s.specs = append([]config.SpecificationConfig(nil), merged...)
-			s.mu.Unlock()
-			return merged
-		}
-	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return append([]config.SpecificationConfig(nil), s.specs...)
-}
-
-// ListSpecificationRecords returns the source-aware view (scope + static
-// vs runtime). Only available when the spec registry is wired.
-func (s *Service) ListSpecificationRecords() ([]specregistry.SpecificationRecord, error) {
-	if s.specRegistry == nil {
-		return nil, fmt.Errorf("spec registry is not available")
-	}
-	return s.specRegistry.ListWithSources()
-}
-
-// reloadSpecs re-reads the merged view from specRegistry and rebuilds
-// the spec engine. Called after every mutation that persists through
-// specRegistry.
-func (s *Service) reloadSpecs() error {
-	merged, err := s.specRegistry.List()
-	if err != nil {
-		return err
-	}
-	s.mu.Lock()
-	s.specs = append([]config.SpecificationConfig(nil), merged...)
-	if s.specEngineBuilder != nil {
-		s.specEngine = s.specEngineBuilder(s.specs)
-	}
-	s.mu.Unlock()
-	return nil
-}
-
-func (s *Service) RunLint(ctx context.Context, changedFiles, specIDs []string) core.LintResult {
-	s.mu.RLock()
-	engine := s.specEngine
-	s.mu.RUnlock()
-	if engine == nil {
-		return core.LintResult{}
-	}
-	return engine.Run(ctx, changedFiles, specIDs)
-}
-
 func closeBackends(backends map[string]core.StoreBackend) error {
 	var firstErr error
 	for _, backend := range backends {
@@ -635,6 +492,10 @@ func normalizeCreateInput(input CreateKnowledgeBaseInput) (registry.RuntimeKnowl
 	if len(input.ID) > 64 || !knowledgeBaseIDPattern.MatchString(input.ID) {
 		return registry.RuntimeKnowledgeBase{}, fmt.Errorf("knowledge base id may contain only letters, digits, underscore, dash, and dot")
 	}
+	kbType, err := config.NormalizeKnowledgeBaseType(input.Type)
+	if err != nil {
+		return registry.RuntimeKnowledgeBase{}, err
+	}
 	if input.StoreType != "text" && input.StoreType != "sqlite" {
 		return registry.RuntimeKnowledgeBase{}, fmt.Errorf("unsupported knowledge base store type %q", input.StoreType)
 	}
@@ -674,6 +535,7 @@ func normalizeCreateInput(input CreateKnowledgeBaseInput) (registry.RuntimeKnowl
 	}
 	cfg := config.KnowledgeBaseConfig{
 		ID:                input.ID,
+		Type:              kbType,
 		Name:              name,
 		StoreType:         input.StoreType,
 		StoreConfig:       storeConfig,
@@ -706,6 +568,7 @@ func normalizeCreateInput(input CreateKnowledgeBaseInput) (registry.RuntimeKnowl
 	}
 	return registry.RuntimeKnowledgeBase{
 		ID:                cfg.ID,
+		Type:              cfg.Type,
 		Name:              cfg.Name,
 		StoreType:         cfg.StoreType,
 		StoreConfig:       cfg.StoreConfig,
@@ -720,6 +583,7 @@ func runtimeToCore(item registry.RuntimeKnowledgeBase) core.KnowledgeBase {
 	return core.KnowledgeBase{
 		ID:                item.ID,
 		Scope:             core.ScopeGlobal,
+		Type:              item.Type,
 		Name:              item.Name,
 		StoreType:         item.StoreType,
 		StoreConfig:       item.StoreConfig,
@@ -734,6 +598,7 @@ func runtimeToCoreScoped(item registry.RuntimeKnowledgeBase, scope string) core.
 	return core.KnowledgeBase{
 		ID:                item.ID,
 		Scope:             scope,
+		Type:              item.Type,
 		Name:              item.Name,
 		StoreType:         item.StoreType,
 		StoreConfig:       item.StoreConfig,

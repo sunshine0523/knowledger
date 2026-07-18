@@ -27,9 +27,9 @@ var bundleFiles = []string{
 	"README.md",
 	"skills/knowledger/SKILL.md",
 	"skills/git-knowledge/SKILL.md",
-	"skills/git-spec/SKILL.md",
 	"skills/update-knowledger/SKILL.md",
 	"skills/kb-code-review/SKILL.md",
+	"skills/create-knowledge-base/SKILL.md",
 }
 
 type CommandRunner interface {

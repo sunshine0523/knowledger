@@ -96,7 +96,7 @@ func TestInstallFreshCreatesPersonalMarketplaceAndPluginBundle(t *testing.T) {
 		filepath.Join(pluginRoot, ".codex-plugin", "plugin.json"),
 		filepath.Join(pluginRoot, ".mcp.json"),
 		filepath.Join(pluginRoot, "skills", "knowledger", "SKILL.md"),
-		filepath.Join(pluginRoot, "skills", "git-spec", "SKILL.md"),
+		filepath.Join(pluginRoot, "skills", "create-knowledge-base", "SKILL.md"),
 	} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected %s to exist: %v", path, err)

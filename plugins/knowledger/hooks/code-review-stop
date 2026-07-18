@@ -72,33 +72,13 @@ fi
 # One review per edit cycle — consume the marker now.
 rm -f "$marker" 2>/dev/null || true
 
-# Build changed_files args for knowledger lint
-changed_files_args=""
-while IFS= read -r f; do
-    changed_files_args="$changed_files_args --changed-files $f"
-done <<< "$changed"
-
-lint_result=""
-if command -v knowledger >/dev/null 2>&1; then
-    # shellcheck disable=SC2086
-    lint_result=$(knowledger lint $changed_files_args 2>/dev/null || true)
-fi
-
-if [ -z "$lint_result" ] || [ "$lint_result" = '{"findings":null,"rule_sets":null}' ] || [ "$lint_result" = '{"findings":[],"rule_sets":[]}' ]; then
-    exit 0
-fi
-
-LINT_RESULT="$lint_result" python3 -c "
+# Specification knowledge bases are reviewed through the shared knowledge
+# tools and the kb-code-review skill. The old `knowledger lint` command and
+# its separate specification registry no longer exist.
+CHANGED_FILES="$changed" python3 -c "
 import json, os
-result = os.environ.get('LINT_RESULT', '{}')
-reason = '''Lint checks completed. Apply the minimal fixes required by the findings below, citing each spec_id.
-
-- findings: apply fixes for must-fix and should-fix items.
-- rule_sets: compare the diff against these rules and fix any violations.
-- If both are empty, report \"no violations\" and finish.
-
-LintResult:
-''' + result
+changed = os.environ.get('CHANGED_FILES', '')
+reason = '''knowledger code review: invoke the knowledger:kb-code-review skill and compare these changed files against the enabled specification knowledge bases:\n''' + changed
 print(json.dumps({'decision': 'block', 'reason': reason}))
 " 2>/dev/null || echo '{}'
 

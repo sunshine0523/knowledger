@@ -1,6 +1,5 @@
 default_search_mode: auto
 runtime_registry_path: ~/.knowledger/registry.json
-spec_registry_path: ~/.knowledger/specs.json
 server:
   address: ":34125"
 knowledge_bases:
@@ -41,14 +40,5 @@ knowledge_bases:
         collection: docs
         auto_download: true
 
-# Static specifications loaded on every start. Runtime specs (added via
-# `knowledger spec add` or `spec-git-add`) are persisted separately in
-# spec_registry_path and merged over static ones on read.
-# specifications:
-#   - id: my-rules
-#     name: My Rules
-#     type: kb
-#     enabled: true
-#     source:
-#       kb_id: rules
-#       tags: [style]
+# Use `type: specification` on a knowledge_bases entry for rules and
+# conventions. Knowledge and specification KBs share the same registry.

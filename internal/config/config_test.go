@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/kindbrave/claude-knowledger/internal/config"
+	"github.com/kindbrave/claude-knowledger/internal/core"
 )
 
 func TestLoadAppliesDefaultsAndReadsKnowledgeBases(t *testing.T) {
@@ -47,8 +48,36 @@ knowledge_bases:
 	if cfg.KnowledgeBases[0].ID != "docs" {
 		t.Fatalf("expected kb id docs, got %q", cfg.KnowledgeBases[0].ID)
 	}
+	if cfg.KnowledgeBases[0].Type != core.KnowledgeBaseTypeKnowledge {
+		t.Fatalf("expected default knowledge base type knowledge, got %q", cfg.KnowledgeBases[0].Type)
+	}
 	if cfg.KnowledgeBases[0].StoreConfig["path"] != "./kb/docs" {
 		t.Fatalf("expected text path to remain unchanged, got %#v", cfg.KnowledgeBases[0].StoreConfig["path"])
+	}
+}
+
+func TestLoadPreservesSpecificationKnowledgeBaseType(t *testing.T) {
+	cfg := loadConfig(t, `knowledge_bases:
+  - id: rules
+    type: specification
+    store_type: text
+    store_config:
+      path: ./rules
+`)
+	if got := cfg.KnowledgeBases[0].Type; got != core.KnowledgeBaseTypeSpecification {
+		t.Fatalf("expected specification type, got %q", got)
+	}
+}
+
+func TestLoadRejectsUnknownKnowledgeBaseType(t *testing.T) {
+	if _, err := loadConfigError(t, `knowledge_bases:
+  - id: bad
+    type: rules
+    store_type: text
+    store_config:
+      path: ./rules
+`); err == nil {
+		t.Fatal("expected unknown knowledge base type to fail")
 	}
 }
 

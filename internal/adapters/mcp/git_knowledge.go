@@ -18,6 +18,7 @@ type gitKnowledgeAddInput struct {
 	URL   string `json:"url"`
 	ID    string `json:"id,omitempty"`
 	Name  string `json:"name,omitempty"`
+	Type  string `json:"type,omitempty"`
 }
 
 type gitKnowledgePullInput struct {
@@ -66,6 +67,7 @@ func (s *Server) handleGitKnowledgeAdd(ctx context.Context, request mcpgo.CallTo
 	record, err := s.svc.CreateKnowledgeBase(ctx, service.CreateKnowledgeBaseInput{
 		Scope:     scope,
 		ID:        id,
+		Type:      input.Type,
 		Name:      name,
 		StoreType: "text",
 		Path:      clonePath,

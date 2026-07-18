@@ -14,7 +14,7 @@ import (
 )
 
 func newKBGitKnowledgeAddCommand(svc *service.Service) *cobra.Command {
-	var id, name string
+	var id, name, kbType string
 	cmd := &cobra.Command{
 		Use:   "kb-git-knowledge-add <url>",
 		Short: "Clone a git repository as a text knowledge base",
@@ -48,6 +48,7 @@ func newKBGitKnowledgeAddCommand(svc *service.Service) *cobra.Command {
 			record, err := svc.CreateKnowledgeBase(context.Background(), service.CreateKnowledgeBaseInput{
 				Scope:     scope,
 				ID:        id,
+				Type:      kbType,
 				Name:      name,
 				StoreType: "text",
 				Path:      clonePath,
@@ -60,6 +61,7 @@ func newKBGitKnowledgeAddCommand(svc *service.Service) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&id, "id", "", "knowledge base id (derived from repository name if omitted)")
 	cmd.Flags().StringVar(&name, "name", "", "human-readable name (defaults to id)")
+	cmd.Flags().StringVar(&kbType, "type", "knowledge", "knowledge base type: knowledge, specification")
 	return cmd
 }
 
@@ -176,4 +178,3 @@ func newKBGitKnowledgeListCommand(svc *service.Service) *cobra.Command {
 		},
 	}
 }
-
