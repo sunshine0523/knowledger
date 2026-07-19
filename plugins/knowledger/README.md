@@ -9,6 +9,7 @@ The plugin is intentionally thin. Knowledger's Go binary remains the source of t
 - Plugin manifests for Codex and Claude Code.
 - An MCP server configuration named `knowledger` that runs `knowledger mcp`.
 - A `knowledger` skill that tells Claude when to search saved knowledge and when to propose durable capture.
+- Lifecycle hooks that sync Git-backed knowledge and trigger convention-aware review after code edits.
 
 ## Prerequisites
 

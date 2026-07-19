@@ -97,13 +97,31 @@ func TestInstallFreshCreatesPersonalMarketplaceAndPluginBundle(t *testing.T) {
 		filepath.Join(pluginRoot, ".mcp.json"),
 		filepath.Join(pluginRoot, "skills", "knowledger", "SKILL.md"),
 		filepath.Join(pluginRoot, "skills", "create-knowledge-base", "SKILL.md"),
+		filepath.Join(pluginRoot, "hooks", "hooks.json"),
+		filepath.Join(pluginRoot, "hooks", "precheck"),
+		filepath.Join(pluginRoot, "hooks", "git-sync"),
+		filepath.Join(pluginRoot, "hooks", "code-review-precheck"),
+		filepath.Join(pluginRoot, "hooks", "code-review-stop"),
+		filepath.Join(pluginRoot, "hooks", "edit-tracker"),
 	} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected %s to exist: %v", path, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(pluginRoot, "hooks")); !os.IsNotExist(err) {
-		t.Fatalf("Codex bundle must not contain Claude hooks, stat error: %v", err)
+	skillData, err := os.ReadFile(filepath.Join(pluginRoot, "skills", "knowledger", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		"The root agent MUST NOT call",
+		"All retrieval tool calls must run",
+		"inside the dedicated subagent",
+		"`spawn_agent` in Codex",
+		"must not delegate again",
+	} {
+		if !strings.Contains(string(skillData), required) {
+			t.Fatalf("installed Knowledger skill must contain %q", required)
+		}
 	}
 
 	mcpData, err := os.ReadFile(filepath.Join(pluginRoot, ".mcp.json"))

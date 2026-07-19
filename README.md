@@ -111,7 +111,7 @@ Install the full integration for Codex:
 knowledger install --codex
 ```
 
-This installs the Knowledger Codex plugin, its skills, and its MCP server configuration. Start a new Codex thread after installation.
+This installs the Knowledger Codex plugin, its skills, lifecycle hooks, and MCP server configuration. Start a new Codex thread after installation.
 
 Install the Claude Code integration:
 

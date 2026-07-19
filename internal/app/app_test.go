@@ -151,7 +151,9 @@ func TestBuildServiceAllowsMultipleSQLitePaths(t *testing.T) {
 }
 
 func TestRunDefaultInvokesMCPRunner(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Chdir(home)
 	called := false
 	restore := app.SetMCPRunnerForTest(func(svc *service.Service) error {
 		called = true
@@ -173,7 +175,7 @@ func TestRunDefaultInvokesMCPRunner(t *testing.T) {
 	}
 }
 
-func TestRunDefaultCreatesProjectKnowledgeBaseBeforeKnowledgerDirExists(t *testing.T) {
+func TestRunDefaultCreatesProjectTextKnowledgeBaseBeforeKnowledgerDirExists(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	projectRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(projectRoot, ".git"), 0o755); err != nil {
@@ -192,11 +194,14 @@ func TestRunDefaultCreatesProjectKnowledgeBaseBeforeKnowledgerDirExists(t *testi
 		}
 	}()
 
-	if err := app.RunDefault([]string{"kb-create", "--id", "notes", "--store-type", "sqlite"}); err != nil {
+	if err := app.RunDefault([]string{"kb-create", "--id", "notes", "--store-type", "text"}); err != nil {
 		t.Fatalf("RunDefault kb-create returned error: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, ".knowledger", "registry.json")); err != nil {
 		t.Fatalf("expected project registry to be created: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, ".knowledger", "db")); !os.IsNotExist(err) {
+		t.Fatalf("project sqlite database was created; stat error: %v", err)
 	}
 }
 

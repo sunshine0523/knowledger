@@ -102,12 +102,12 @@ func (s *Server) registerTools() {
 	)
 	createKBTool := mcpgo.NewTool(
 		"create_knowledge_base",
-		mcpgo.WithDescription("Create a new knowledge base. Path is required for global scope; for project scope a relative path is resolved against the project root."),
+		mcpgo.WithDescription("Create a new knowledge base. Project scope supports only the text store type. Path is required for global scope; for project scope a relative path is resolved against the project root."),
 		scopeProperty,
 		mcpgo.WithString("id", mcpgo.Required(), mcpgo.Description("Knowledge base ID (letters, digits, underscore, dash, dot; max 64 chars).")),
 		mcpgo.WithString("type", mcpgo.Description("Knowledge base type. Defaults to knowledge."), mcpgo.Enum("knowledge", "specification")),
 		mcpgo.WithString("name", mcpgo.Description("Human-readable name. Defaults to id.")),
-		mcpgo.WithString("store_type", mcpgo.Required(), mcpgo.Description("Backend store type."), mcpgo.Enum("text", "sqlite")),
+		mcpgo.WithString("store_type", mcpgo.Required(), mcpgo.Description("Backend store type. Project scope supports only text; SQLite is global-only."), mcpgo.Enum("text", "sqlite")),
 		mcpgo.WithString("path", mcpgo.Description("Storage path. Required for global scope; relative paths for project scope are resolved against the project root.")),
 		mcpgo.WithBoolean("enabled", mcpgo.Description("Whether the knowledge base is enabled. Defaults to true.")),
 		mcpgo.WithBoolean("semantic_enabled", mcpgo.Description("Enable semantic indexing for sqlite store types.")),

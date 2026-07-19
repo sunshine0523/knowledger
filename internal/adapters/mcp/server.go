@@ -27,9 +27,17 @@ const serverInstructions = `# Knowledger — typed knowledge bases, runs BEFORE 
 Every collection is a knowledge base with type ` + "`knowledge`" + ` or
 ` + "`specification`" + `. Both use the same knowledge-base and item tools.
 
-## Rules and knowledge
+## Mandatory retrieval boundary
 
 BEFORE answering, writing code, designing, or making any technical recommendation:
+
+1. A root/main agent MUST spawn exactly one dedicated retrieval subagent, wait
+   for its summary, and MUST NOT call retrieval tools itself.
+2. The delegated retrieval subagent MUST execute the workflow below directly
+   and MUST NOT delegate again. If subagents are unavailable, report retrieval
+   as blocked instead of calling retrieval tools from the root/main agent.
+
+The following steps run only inside the dedicated retrieval subagent:
 
 1. Call ` + "`list_knowledge_bases`" + ` and identify every enabled
    ` + "`specification`" + ` knowledge base.
@@ -42,7 +50,8 @@ BEFORE answering, writing code, designing, or making any technical recommendatio
 
 ` + "`add_knowledge_item`" + ` when the user says save / capture / remember /
 记一下 / 保存到 / 添加到 — and the target KB is unambiguous.
-Otherwise ` + "`list_knowledge_bases`" + ` and ask which KB to use.
+Otherwise use the same retrieval-subagent boundary to call
+` + "`list_knowledge_bases`" + ` and ask which KB to use.
 
 ## Skip
 

@@ -193,6 +193,9 @@ func (r *Registry) Create(scope string, item RuntimeKnowledgeBase) error {
 	if item.ID == "" {
 		return fmt.Errorf("knowledge base id is required")
 	}
+	if scope == core.ScopeProject && item.StoreType != "text" {
+		return fmt.Errorf("unsupported project-scoped store type %q: project-scoped knowledge bases support only the text store type", item.StoreType)
+	}
 	typeName, err := config.NormalizeKnowledgeBaseType(item.Type)
 	if err != nil {
 		return err
@@ -305,15 +308,12 @@ func applyProjectDefaults(item *RuntimeKnowledgeBase, projectRoot string) error 
 	}
 	rawPath, _ := item.StoreConfig["path"].(string)
 	if strings.TrimSpace(rawPath) == "" {
-		switch item.StoreType {
-		case "sqlite":
-			item.StoreConfig["path"] = ".knowledger/db"
-		case "text":
+		if item.StoreType == "text" {
 			item.StoreConfig["path"] = filepath.Join(".knowledger", "data", item.ID)
 		}
 	}
 
-	if item.StoreType != "sqlite" && item.StoreType != "text" {
+	if item.StoreType != "text" {
 		return nil
 	}
 	if item.Indexing == nil {

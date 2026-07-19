@@ -213,6 +213,16 @@ func TestMCPHandlersRoundTripThroughService(t *testing.T) {
 	if initResult.ServerInfo.Name != "knowledger" {
 		t.Fatalf("expected server name knowledger, got %q", initResult.ServerInfo.Name)
 	}
+	for _, required := range []string{
+		"root/main agent MUST spawn exactly one dedicated retrieval subagent",
+		"MUST NOT call retrieval tools itself",
+		"delegated retrieval subagent MUST execute the workflow below directly",
+		"MUST NOT delegate again",
+	} {
+		if !strings.Contains(initResult.Instructions, required) {
+			t.Fatalf("server instructions must contain %q, got:\n%s", required, initResult.Instructions)
+		}
+	}
 
 	addRequest := mcp.CallToolRequest{}
 	addRequest.Params.Name = "add_knowledge_item"

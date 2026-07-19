@@ -52,7 +52,7 @@ func newCreateKBCommand(svc *service.Service) *cobra.Command {
 	cmd.Flags().StringVar(&id, "id", "", "knowledge base id")
 	cmd.Flags().StringVar(&kbType, "type", "knowledge", "knowledge base type: knowledge, specification")
 	cmd.Flags().StringVar(&name, "name", "", "human-readable name (defaults to id)")
-	cmd.Flags().StringVar(&storeType, "store-type", "", "backend store type: text, sqlite")
+	cmd.Flags().StringVar(&storeType, "store-type", "", "backend store type: text, sqlite (project scope supports text only)")
 	cmd.Flags().StringVar(&path, "path", "", "storage path (required for global scope)")
 	cmd.Flags().StringSliceVar(&tags, "tag", nil, "knowledge base tag (repeat for multiple)")
 	cmd.Flags().BoolVar(&enabled, "enabled", true, "whether the knowledge base is enabled")

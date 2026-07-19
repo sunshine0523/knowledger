@@ -375,6 +375,11 @@ async function loadKBs() {
 }
 
 function setupCreateKBForm(form) {
+  const scopeSelect = form.querySelector("#kb-create-scope");
+  if (scopeSelect) {
+    scopeSelect.addEventListener("change", () => applyKBCreateConstraints(form));
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(form);
@@ -396,11 +401,24 @@ function setupCreateKBForm(form) {
       showKBMessage(t("kbs.created"), false);
       form.reset();
       applyProjectModeToKBForm();
+      applyKBCreateConstraints(form);
       await refreshKBPage();
     } catch (error) {
       showKBMessage(error.message, true);
     }
   });
+}
+
+function applyKBCreateConstraints(form) {
+  if (!form) return;
+  const scopeSelect = form.querySelector("#kb-create-scope");
+  const storeTypeSelect = form.querySelector("#kb-create-store-type");
+  if (!scopeSelect || !storeTypeSelect) return;
+
+  const projectScoped = scopeSelect.value === "project" || (scopeSelect.value === "" && projectMode.inProject);
+  const sqliteOption = storeTypeSelect.querySelector('option[value="sqlite"]');
+  if (sqliteOption) sqliteOption.disabled = projectScoped;
+  if (projectScoped) storeTypeSelect.value = "text";
 }
 
 function applyProjectModeToKBForm() {
@@ -409,6 +427,7 @@ function applyProjectModeToKBForm() {
   if (projectMode.inProject) {
     sel.value = "project";
   }
+  applyKBCreateConstraints(sel.form);
 }
 
 function applyProjectModeBanner() {

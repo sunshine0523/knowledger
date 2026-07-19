@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "knowledger",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "description": "Knowledger integration for Claude Code. Connects Claude Code to the local knowledger MCP server and teaches Claude when to retrieve or capture durable knowledge.",
       "author": {
         "name": "KindBrave"
@@ -18,5 +18,5 @@
       "tags": ["knowledge", "mcp", "claude-code"]
     }
   ],
-  "version": "0.2.0"
+  "version": "0.2.3"
 }

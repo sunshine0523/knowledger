@@ -1,4 +1,34 @@
 {
   "version": 1,
-  "knowledge_bases": []
+  "knowledge_bases": [
+    {
+      "id": "project-general-specifications",
+      "type": "specification",
+      "name": "项目通用规范",
+      "store_type": "sqlite",
+      "store_config": {
+        "path": "/run/media/kindbrave/Data/code/ai/claude-knowledger/.knowledger/db"
+      },
+      "enabled": true,
+      "default_search_mode": "auto",
+      "indexing": {
+        "lexical": {
+          "enabled": true
+        },
+        "semantic": {
+          "auto_download": true,
+          "collection": "proj-71a59de2-project-general-specifications",
+          "enabled": false,
+          "mode": "persistent",
+          "path": ".knowledger/chroma/proj-71a59de2-project-general-specifications",
+          "provider": "chroma",
+          "sync_mode": "async"
+        }
+      },
+      "tags": [
+        "project",
+        "conventions"
+      ]
+    }
+  ]
 }

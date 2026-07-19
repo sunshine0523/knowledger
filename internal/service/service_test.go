@@ -1259,6 +1259,44 @@ func TestServiceCreateKnowledgeBaseHonoursScope(t *testing.T) {
 	}
 }
 
+func TestServiceRejectsProjectSQLiteWithoutCreatingDatabase(t *testing.T) {
+	projectRoot := t.TempDir()
+	projectStore := registry.NewMemoryStore(nil)
+	reg := registry.New(nil, registry.NewMemoryStore(nil), projectStore, projectRoot)
+	buildCalls := 0
+	build := func(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) {
+		buildCalls++
+		return map[string]core.StoreBackend{"text": &scopeAwareFakeBackend{}}, nil
+	}
+	svc, err := service.NewManaged(reg, build)
+	if err != nil {
+		t.Fatalf("NewManaged: %v", err)
+	}
+	initialBuildCalls := buildCalls
+
+	_, err = svc.CreateKnowledgeBase(context.Background(), service.CreateKnowledgeBaseInput{
+		Scope:     core.ScopeProject,
+		ID:        "notes",
+		StoreType: "sqlite",
+	})
+	if err == nil || !strings.Contains(err.Error(), "only the text store type") {
+		t.Fatalf("expected project sqlite rejection, got %v", err)
+	}
+	if buildCalls != initialBuildCalls {
+		t.Fatalf("backend builder ran for rejected project sqlite KB: before=%d after=%d", initialBuildCalls, buildCalls)
+	}
+	persisted, err := projectStore.List()
+	if err != nil {
+		t.Fatalf("List project store: %v", err)
+	}
+	if len(persisted) != 0 {
+		t.Fatalf("rejected project sqlite KB was persisted: %#v", persisted)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, ".knowledger", "db")); !os.IsNotExist(err) {
+		t.Fatalf("project sqlite database was created; stat error: %v", err)
+	}
+}
+
 func TestServiceCreateKnowledgeBaseProjectFailsWithoutProjectStore(t *testing.T) {
 	reg := registry.New(nil, registry.NewMemoryStore(nil), nil, "")
 	build := func(kbs []core.KnowledgeBase) (map[string]core.StoreBackend, error) {

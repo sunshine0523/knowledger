@@ -36,7 +36,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch",
         "hooks": [
           {
             "type": "command",

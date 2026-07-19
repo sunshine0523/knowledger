@@ -1,7 +1,7 @@
 ---
 name: create-knowledge-base
 description: Use when the user asks to create, initialize, or register a Knowledger knowledge base, including a specification knowledge base.
-version: 1.1.0
+version: 1.2.0
 triggers:
   - "创建知识库"
   - "新建知识库"
@@ -27,11 +27,11 @@ Prefer the MCP tools; use the CLI when MCP is unavailable. Do not edit
 2. Call `create_knowledge_base` with:
    - `id`
    - `type`: `knowledge` or `specification` (defaults to `knowledge`)
-   - `store_type`: `text` or `sqlite`
+   - `store_type`: `text` for project scope; `text` or `sqlite` for global scope
    - explicit `scope` when the user supplied one
-3. For a project-scoped KB, pass `semantic_enabled: false` unless the user
-   explicitly requests semantic indexing, and do not call `index_knowledge`
-   automatically.
+3. Project-scoped KBs are text-only. Always pass `store_type: text` and
+   `semantic_enabled: false`; never create a project-scoped SQLite KB or call
+   `index_knowledge` automatically.
 4. For a Git-backed KB, use `git_knowledge_add` or
    `knowledger kb-git-knowledge-add`; pass `type: specification` when the
    repository contains rules.
@@ -45,7 +45,8 @@ MCP example:
   "id": "project-rules",
   "type": "specification",
   "name": "Project Rules",
-  "store_type": "sqlite",
+  "store_type": "text",
+  "path": ".knowledger/data/project-rules",
   "semantic_enabled": false
 }
 ```
@@ -57,7 +58,7 @@ knowledger --scope project kb-create \
   --id project-rules \
   --name "Project Rules" \
   --type specification \
-  --store-type sqlite \
+  --store-type text \
+  --path .knowledger/data/project-rules \
   --semantic-enabled=false
 ```
-

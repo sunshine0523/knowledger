@@ -500,6 +500,9 @@ func normalizeCreateInput(input CreateKnowledgeBaseInput) (registry.RuntimeKnowl
 		return registry.RuntimeKnowledgeBase{}, fmt.Errorf("unsupported knowledge base store type %q", input.StoreType)
 	}
 	scope, _ := core.NormalizeScope(input.Scope)
+	if scope == core.ScopeProject && input.StoreType != "text" {
+		return registry.RuntimeKnowledgeBase{}, fmt.Errorf("unsupported project-scoped store type %q: project-scoped knowledge bases support only the text store type", input.StoreType)
+	}
 	pathInput := strings.TrimSpace(input.Path)
 	enabled := true
 	if input.Enabled != nil {

@@ -276,33 +276,30 @@ func TestRegistryDeleteScopedRoutesCorrectly(t *testing.T) {
 	}
 }
 
-func TestRegistryProjectKBDefaultsArePersistedAsRelativePaths(t *testing.T) {
+func TestRegistryRejectsProjectSQLite(t *testing.T) {
 	projectStore := registry.NewMemoryStore(nil)
 	r := registry.New(nil, registry.NewMemoryStore(nil), projectStore, "/tmp/proj")
 
-	if err := r.Create(core.ScopeProject, registry.RuntimeKnowledgeBase{
+	err := r.Create(core.ScopeProject, registry.RuntimeKnowledgeBase{
 		ID:        "notes",
 		StoreType: "sqlite",
 		Enabled:   true,
-	}); err != nil {
-		t.Fatalf("Create: %v", err)
+	})
+	if err == nil || !strings.Contains(err.Error(), "only the text store type") {
+		t.Fatalf("expected project sqlite rejection, got %v", err)
 	}
 
 	persisted, _ := projectStore.List()
-	if len(persisted) != 1 {
-		t.Fatalf("expected 1 persisted item, got %d", len(persisted))
-	}
-	got := persisted[0].StoreConfig["path"]
-	if got != ".knowledger/db" {
-		t.Fatalf("expected persisted path %q, got %q", ".knowledger/db", got)
+	if len(persisted) != 0 {
+		t.Fatalf("rejected project sqlite KB was persisted: %#v", persisted)
 	}
 }
 
 func TestRegistryProjectKBResolvesRelativePathsOnList(t *testing.T) {
 	projectStore := registry.NewMemoryStore([]registry.RuntimeKnowledgeBase{{
 		ID:          "notes",
-		StoreType:   "sqlite",
-		StoreConfig: map[string]any{"path": ".knowledger/db"},
+		StoreType:   "text",
+		StoreConfig: map[string]any{"path": ".knowledger/data/notes"},
 		Enabled:     true,
 	}})
 	r := registry.New(nil, registry.NewMemoryStore(nil), projectStore, "/tmp/proj")
@@ -315,11 +312,11 @@ func TestRegistryProjectKBResolvesRelativePathsOnList(t *testing.T) {
 		t.Fatalf("expected 1 record, got %d", len(records))
 	}
 	got := records[0].KnowledgeBase.StoreConfig["path"]
-	if got != "/tmp/proj/.knowledger/db" {
-		t.Fatalf("expected resolved path %q, got %q", "/tmp/proj/.knowledger/db", got)
+	if got != "/tmp/proj/.knowledger/data/notes" {
+		t.Fatalf("expected resolved path %q, got %q", "/tmp/proj/.knowledger/data/notes", got)
 	}
 	stored, _ := projectStore.List()
-	if stored[0].StoreConfig["path"] != ".knowledger/db" {
+	if stored[0].StoreConfig["path"] != ".knowledger/data/notes" {
 		t.Fatalf("expected store to keep relative path, got %q", stored[0].StoreConfig["path"])
 	}
 }
@@ -330,7 +327,7 @@ func TestRegistryProjectKBChromaCollectionPrefix(t *testing.T) {
 
 	if err := r.Create(core.ScopeProject, registry.RuntimeKnowledgeBase{
 		ID:        "notes",
-		StoreType: "sqlite",
+		StoreType: "text",
 		Enabled:   true,
 	}); err != nil {
 		t.Fatalf("Create: %v", err)

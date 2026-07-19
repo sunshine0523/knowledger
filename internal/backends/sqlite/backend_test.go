@@ -18,6 +18,26 @@ func indexerOption(factory chroma.Factory) sqlitebackend.Option {
 	return sqlitebackend.WithIndexer(semantic.NewIndexer(factory, nil))
 }
 
+func TestSQLiteMultiBackendSkipsProjectScopedDatabases(t *testing.T) {
+	projectRoot := t.TempDir()
+	dbPath := filepath.Join(projectRoot, ".knowledger", "db")
+	backend, err := sqlitebackend.NewMulti([]core.KnowledgeBase{{
+		ID:          "notes",
+		Scope:       core.ScopeProject,
+		StoreType:   "sqlite",
+		StoreConfig: map[string]any{"path": dbPath},
+		Enabled:     true,
+	}})
+	if err != nil {
+		t.Fatalf("NewMulti returned error: %v", err)
+	}
+	defer backend.Close()
+
+	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
+		t.Fatalf("project sqlite database was created; stat error: %v", err)
+	}
+}
+
 func TestSQLiteBackendAddListAndFTSSearch(t *testing.T) {
 	ctx := context.Background()
 	dbPath := filepath.Join(t.TempDir(), "knowledge.db")
@@ -763,7 +783,6 @@ func (f *fakeSemanticClient) Close() error {
 	f.closed = true
 	return f.closeErr
 }
-
 
 func TestSQLiteBackendFTSSearchTokenizedOR(t *testing.T) {
 	ctx := context.Background()

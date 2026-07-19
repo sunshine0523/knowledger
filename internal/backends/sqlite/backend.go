@@ -77,7 +77,8 @@ func New(path string, opts ...Option) (*Backend, error) {
 func NewMulti(kbs []core.KnowledgeBase, opts ...Option) (*MultiBackend, error) {
 	multi := &MultiBackend{backends: map[string]*Backend{}}
 	for _, kb := range kbs {
-		if kb.StoreType != "sqlite" {
+		// Legacy project SQLite records must not recreate databases under the project root.
+		if kb.StoreType != "sqlite" || kb.Scope == core.ScopeProject {
 			continue
 		}
 		path, err := databasePath(kb)

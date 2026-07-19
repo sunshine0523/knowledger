@@ -1,6 +1,6 @@
 {
   "name": "knowledger",
-  "version": "0.2.0",
+  "version": "0.2.3",
   "description": "Local-first knowledge retrieval and capture for Codex through the Knowledger MCP server.",
   "author": {
     "name": "KindBrave",
