@@ -34,8 +34,6 @@ var bundleFiles = []string{
 	"hooks/precheck",
 	"hooks/git-sync",
 	"hooks/code-review-precheck",
-	"hooks/code-review-stop",
-	"hooks/edit-tracker",
 }
 
 type CommandRunner interface {

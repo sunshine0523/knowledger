@@ -101,8 +101,6 @@ func TestInstallFreshCreatesPersonalMarketplaceAndPluginBundle(t *testing.T) {
 		filepath.Join(pluginRoot, "hooks", "precheck"),
 		filepath.Join(pluginRoot, "hooks", "git-sync"),
 		filepath.Join(pluginRoot, "hooks", "code-review-precheck"),
-		filepath.Join(pluginRoot, "hooks", "code-review-stop"),
-		filepath.Join(pluginRoot, "hooks", "edit-tracker"),
 	} {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected %s to exist: %v", path, err)

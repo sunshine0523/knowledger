@@ -1,6 +1,6 @@
 ---
 name: kb-code-review
-description: MUST invoke when the Stop hook injects a "knowledger code review" block, when the user explicitly asks to "check code against the knowledge base", "run a knowledger review", "用知识库审查代码", "对照知识库检查代码", or after finishing a coding turn that touched Edit/Write/MultiEdit/NotebookEdit. This is NOT a general code review — it only checks convention compliance against knowledge-base items, and always runs via a dispatched sub-agent.
+description: MUST invoke when the user explicitly asks to "check code against the knowledge base", "run a knowledger review", "用知识库审查代码", or "对照知识库检查代码". This is NOT a general code review — it only checks convention compliance against knowledge-base items, and always runs via a dispatched sub-agent.
 version: 1.0.0
 triggers:
   - "knowledger code review"
@@ -27,7 +27,6 @@ Convention-compliance code review driven entirely by the Knowledger knowledge ba
 
 ## When To Invoke
 
-- The `Stop` hook injects a `knowledger code review` block after a session touched files via `Edit`/`Write`/`MultiEdit`/`NotebookEdit`.
 - The user asks explicitly for a convention/standard review against the KB (see `triggers`).
 - Skip only if:
   - There are no tracked/staged changes in the repo (nothing to review).
@@ -40,7 +39,7 @@ If no KBs are configured (`list_knowledge_bases` returns empty), report "no know
 
 ```dot
 digraph kb_cr_flow {
-  "Stop hook / user trigger" [shape=doublecircle];
+  "User trigger" [shape=doublecircle];
   "Main agent: read hook payload / user intent" [shape=box];
   "Main agent: collect changed files + diff summary" [shape=box];
   "Main agent: dispatch KB-review sub-agent" [shape=box];
@@ -51,7 +50,7 @@ digraph kb_cr_flow {
   "Main agent: apply fixes minimally, cite KB item per fix" [shape=box];
   "Main agent: summarize changes + citations" [shape=doublecircle];
 
-  "Stop hook / user trigger" -> "Main agent: read hook payload / user intent";
+  "User trigger" -> "Main agent: read hook payload / user intent";
   "Main agent: read hook payload / user intent" -> "Main agent: collect changed files + diff summary";
   "Main agent: collect changed files + diff summary" -> "Main agent: dispatch KB-review sub-agent";
   "Main agent: dispatch KB-review sub-agent" -> "Sub-agent: scan KBs, cross-check diff, emit JSON findings";
@@ -67,7 +66,7 @@ digraph kb_cr_flow {
 
 Before dispatching the sub-agent, gather (silently, no narration):
 
-1. The list of tracked+staged changed files. Prefer the list from the Stop hook payload; otherwise run `git status --porcelain` and filter out `??`/`!!`.
+1. The list of tracked+staged changed files. Run `git status --porcelain` and filter out `??`/`!!`.
 2. The diff you will hand the sub-agent:
    - `git diff HEAD -- <changed files>`
    - `git diff --cached -- <changed files>`
@@ -160,4 +159,4 @@ Keep it terse. The diff is the record — do not repeat it.
 - **Never** invent findings. If the sub-agent returns nothing, that's the answer.
 - **Never** read KB files with Read/grep/cat — only via `list_knowledge_bases`, `list_knowledge_items`, `get_knowledge_item`.
 - **Never** widen the fix beyond what the cited rule requires.
-- **Never** loop: once this skill has run for the current Stop-hook cycle, do not re-invoke it in the same turn (the hook's `stop_hook_active` guard already handles this on its side).
+- **Never** loop: once this skill has run for the current user-triggered review, do not re-invoke it in the same turn.
