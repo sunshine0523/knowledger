@@ -1,9 +1,21 @@
 ---
 name: knowledger
-description: Retrieve durable project or global knowledge and specification knowledge bases before answering or changing code. Use before work affected by project context. All retrieval must run in one dedicated subagent; the root agent must never call retrieval tools.
+description: Opt-in retrieval of durable project or global knowledge and specification knowledge bases. Invoke only when the user strongly requests Knowledger or when the user input starts with the `kb` prefix; do not invoke for ordinary project-context work. All retrieval must run in one dedicated subagent; the root agent must never call retrieval tools.
 ---
 
 # Knowledger
+
+## Trigger gate
+
+This skill is strictly opt-in. Do not invoke it, retrieve from a knowledge
+base, or dispatch its retrieval subagent for ordinary coding, design,
+debugging, or project-context work. Invoke it only when either:
+
+- the user explicitly and strongly requests Knowledger or knowledge-base
+  retrieval; or
+- the user's input starts with the literal lowercase prefix `kb`.
+
+If neither condition is met, skip this skill and continue without Knowledger.
 
 Knowledger exposes one knowledge-base model. Each KB has `type: knowledge` or
 `type: specification`; the latter contains enforceable rules and conventions.
