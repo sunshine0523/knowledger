@@ -98,7 +98,6 @@ func TestInstallFreshCreatesPersonalMarketplaceAndPluginBundle(t *testing.T) {
 		filepath.Join(pluginRoot, "skills", "knowledger", "SKILL.md"),
 		filepath.Join(pluginRoot, "skills", "create-knowledge-base", "SKILL.md"),
 		filepath.Join(pluginRoot, "hooks", "hooks.json"),
-		filepath.Join(pluginRoot, "hooks", "precheck"),
 		filepath.Join(pluginRoot, "hooks", "git-sync"),
 		filepath.Join(pluginRoot, "hooks", "code-review-precheck"),
 	} {

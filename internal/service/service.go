@@ -621,10 +621,7 @@ func runtimeToCoreForCreate(item registry.RuntimeKnowledgeBase, scope, projectRo
 	}
 	path, _ := item.StoreConfig["path"].(string)
 	if strings.TrimSpace(path) == "" {
-		switch item.StoreType {
-		case "sqlite":
-			item.StoreConfig["path"] = filepath.Join(projectRoot, ".knowledger", "db")
-		case "text":
+		if item.StoreType == "text" {
 			item.StoreConfig["path"] = filepath.Join(projectRoot, ".knowledger", "data", item.ID)
 		}
 	} else if !filepath.IsAbs(path) {

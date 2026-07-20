@@ -1,6 +1,8 @@
 ---
 name: knowledger
 description: Opt-in retrieval of durable project or global knowledge and specification knowledge bases. Invoke only when the user strongly requests Knowledger or when the user input starts with the `kb` prefix; do not invoke for ordinary project-context work. All retrieval must run in one dedicated subagent; the root agent must never call retrieval tools.
+triggers:
+  - "kb"
 ---
 
 # Knowledger

@@ -11,10 +11,10 @@ The plugin is intentionally thin. Knowledger's Go binary remains the source of t
 - A `knowledger` skill that tells Claude when to search saved knowledge and when to propose durable capture.
 - A lifecycle hook that syncs Git-backed knowledge when a session starts.
 
-The retrieval skill is opt-in at the prompt hook: prefix a prompt with `kb`
-(for example, `kb find the project's API conventions`) to ask Claude Code to
-invoke `knowledger:knowledger`. Other prompts do not load the retrieval skill
-through the hook.
+The retrieval skill is opt-in. Prefix a prompt with `kb` (for example,
+`kb find the project's API conventions`) to trigger `knowledger:knowledger`.
+Other prompts do not trigger the retrieval skill unless the user explicitly
+requests Knowledger or knowledge-base retrieval.
 
 ## Prerequisites
 

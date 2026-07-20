@@ -5,9 +5,9 @@
       "id": "project-general-specifications",
       "type": "specification",
       "name": "项目通用规范",
-      "store_type": "sqlite",
+      "store_type": "text",
       "store_config": {
-        "path": "/run/media/kindbrave/Data/code/ai/claude-knowledger/.knowledger/db"
+        "path": ".knowledger/data/project-general-specifications"
       },
       "enabled": true,
       "default_search_mode": "auto",

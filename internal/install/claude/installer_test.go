@@ -113,7 +113,6 @@ func TestInstallFreshInstallRegistersMCPMarketplaceAndPlugin(t *testing.T) {
 	assertFileExists(t, filepath.Join(marketplacePath, "skills", "git-knowledge", "SKILL.md"))
 	assertFileExists(t, filepath.Join(marketplacePath, "skills", "update-knowledger", "SKILL.md"))
 	assertFileExists(t, filepath.Join(marketplacePath, "hooks", "hooks.json"))
-	assertFileExists(t, filepath.Join(marketplacePath, "hooks", "precheck"))
 	assertFileExists(t, filepath.Join(marketplacePath, "hooks", "git-sync"))
 
 	stdout := out.String()
@@ -218,7 +217,6 @@ func TestInstallFreshInstallMaterializesMarketplaceDirectoriesWith0755Permission
 	}
 
 	for _, file := range []string{
-		filepath.Join(marketplacePath, "hooks", "precheck"),
 		filepath.Join(marketplacePath, "hooks", "git-sync"),
 	} {
 		assertFileMode(t, file, 0o755)
